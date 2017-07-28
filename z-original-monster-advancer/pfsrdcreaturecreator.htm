@@ -1,0 +1,2745 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <title>Monster Advancement Generator</title>
+  
+
+<script language="JavaScript" type="text/javascript">
+<!--
+
+const DEBUG = true;
+const ADV_ADJ_MIN = 0;
+const ADV_ADJ_MAX = 5;
+const YOUNG_ADJ_MIN = 0;
+const YOUNG_ADJ_MAX = 5;
+const GIANT_ADJ_MIN = 0;
+const GIANT_ADJ_MAX = 5;
+const HD_ADJ_MIN = 0;
+const HD_ADJ_MAX = 30;
+const SIZE_ADJ_MIN = -8;
+const SIZE_ADJ_MAX = 8;
+const SPEED_ADJ_MIN = -50;
+const SPEED_ADJ_MAX = 100;
+
+var Monsters;
+var MonsterListOptions;
+var xmlDoc;
+var xmlObj;
+var doneLoad = false;
+var IE = false;
+
+var Name
+var CR
+var XP
+var Race
+var Class
+var Alignment
+var Size
+var Type
+var SubType
+var Init
+var Senses
+var Aura
+var AC
+var AC_Mods
+var HP
+var HD
+var HP_Mods
+var Saves
+var Fort
+var Ref
+var Will
+var Save_Mods
+var DefensiveAbilities
+var DR
+var Immune
+var Resist
+var SR
+var Weaknesses
+var Speed
+var Speed_Mod
+var Melee
+var Ranged
+var Space
+var Reach
+var SpecialAttacks
+var SpellLikeAbilities
+var SpellsKnown
+var SpellsPrepared
+var SpellDomains
+var AbilitiyScores
+var AbilitiyScore_Mods
+var BaseAtk
+var CMB
+var CMD
+var Feats
+var Skills
+var RacialMods
+var Languages
+var SQ
+var Environment
+var Organization
+var Treasure
+var Group
+var Source
+var IsTemplate
+var SpecialAbilities
+var Description
+var Gender
+var Bloodline
+var ProhibitedSchools
+var BeforeCombat
+var DuringCombat
+var Morale
+var Gear
+var OtherGear
+var Vulnerability
+var Note
+var CharacterFlag
+var CompanionFlag
+var Fly
+var Climb
+var Burrow
+var Swim
+var Land
+var TemplatesApplied                  
+var Str
+var Dex
+var Con
+var Int
+var Wis
+var Cha
+var Advancement
+var HDAdv
+var AC_DexAdv
+var AC_NatAdv
+var AC_SizeAdv
+var AC_DodgeAdv
+var DCAdv    
+var SkillAdv 
+var HitDice
+
+var StrSkills = [ 'Climb', 'Swim' ];            
+var DexSkills = [ 'Acrobatics', 'Disable Device', 'Escape Artist', 'Ride', 'Sleight of Hand', 'Stealth', 'Fly' ];
+var IntSkills = [ 'Appraise', 'Craft', 'Knowledge', 'Linguistics', 'Spellcraft' ];  
+var WisSkills = [ 'Heal', 'Perception', 'Profession', 'Sense Motive', 'Survival' ];
+var ChaSkills = [ 'Bluff', 'Diplomacy', 'Disguise', 'Handle Animal', 'Intimidate', 'Perform', 'Use Magic Device' ];
+
+var whichPanel=0
+var manualLoad=false;
+
+// IE stuff
+function verify()
+{
+  // 0 Object is not initialized
+  // 1 Loading object is loading data
+  // 2 Loaded object has loaded data
+  // 3 Data from object can be worked with
+  // 4 Object completely initialized
+  if (xmlDoc.readyState != 4)
+  {
+      return false;
+  }
+  MonsterList();
+}
+    
+function importXML( type )
+{
+    //alert("importXML");
+    IE = (navigator.appName == 'Microsoft Internet Explorer');
+    xmlfile = "PRPGMonsters.xml";
+    var xmlloaded = false;
+    if (ie)
+    {
+        //alert("IE ActiveXObject")
+        xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+        xmlDoc.async="false";
+        xmlDoc.onreadystatechange=verify;
+        xmlDoc.load(xmlfile);
+        MonsterList();
+        xmlloaded = true;
+    }
+    else
+    {
+        try
+        {
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.open("GET", xmlfile, false);
+        }
+        catch (Exception)
+        {
+            var ie = (typeof window.ActiveXObject != 'undefined');
+            if (typeof window.ActiveXObject != 'undefined')
+            {
+                IE = true;
+                //alert("ActiveXObject")
+                xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+                xmlDoc.async="false";
+                xmlDoc.onreadystatechange=verify;
+                xmlDoc.load(xmlfile);
+                MonsterList();
+                xmlloaded = true;
+            }
+            else
+            {
+                xmlDoc = document.implementation.createDocument("", "", null);
+                xmlDoc.onload = MonsterList;
+                xmlDoc.load(xmlfile);
+                xmlloaded = true;
+            }
+        }
+    }
+    if (!xmlloaded)
+    {
+        xmlhttp.setRequestHeader('Content-Type', 'text/xml')
+        xmlhttp.send("");
+        xmlDoc = xmlhttp.responseXML;
+        MonsterList();
+        xmlloaded = true;
+    }
+}
+
+function getText( node )
+{
+    if ( IE )
+        return node.text;
+    else
+        return node.textContent;
+}
+
+function MonsterList ()
+{
+    var m = 1;
+    var it = "";
+    var names = new Array();
+    var namesi = new Array();
+    
+    Monsters = xmlDoc.getElementsByTagName("Monster");
+    // find all the monster names
+    for (i=0;i<Monsters.length;i++)
+    {
+        for (j=0;j<Monsters[i].childNodes.length;j++)
+        {
+            if (Monsters[i].childNodes[j].nodeType == 1) 
+                if (Monsters[i].childNodes[j].nodeName == "Name")
+                {
+                    name = getText(Monsters[i].childNodes[j]);
+                    document.form.MonsterChooser.options[m] = new Option(name, i);
+                    names[m]=name;
+                    namesi[m]=i;
+                    m += 1;
+                    break;
+                }
+        }
+    }
+    document.form.MonsterChooser.options[0] = new Option("Choose a creature", 0);
+    document.form.MonsterChooser.selectedIndex = 0;
+    whichPanel = 0;
+    
+    // add source on duplicate monster names
+    warning=" ";
+    for (m=1;m<names.length-1; m++)
+    {
+        if (names[m] == names[m+1])
+        {
+            i = namesi[m];
+            i2 = namesi[m+1];
+            for (j=0;j<Monsters[m].childNodes.length;j++)
+            {
+                if (Monsters[m].childNodes[j].nodeType == 1) 
+                {
+                    if (Monsters[m].childNodes[j].nodeName == "Source")
+                    {
+                        name = names[m] + "   (" + getText(Monsters[i].childNodes[j]) + ")";
+                        document.form.MonsterChooser.options[m] = new Option(name, i);
+                        name2 = names[m+1] + "   (" + getText(Monsters[i2].childNodes[j]) + ")";
+                        document.form.MonsterChooser.options[m+1] = new Option(name2, i2);
+                        // comment out next line to disable warnings of duplicate name/source
+                        //if (name == name2) warning += "<br>"+name;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    status(warning);
+
+}
+
+function trimAll(sString)
+{
+    while (sString.substring(0,1) == ' ')
+    {
+        sString = sString.substring(1, sString.length);
+    }
+    while (sString.substring(sString.length-1, sString.length) == ' ')
+    {
+        sString = sString.substring(0,sString.length-1);
+    }
+    return sString;
+} 
+
+function doIt()
+{ 
+  var id = document.form.MonsterChooser.value;
+  if ( id < 0 ) return;
+  
+  status(" Working... ");
+  var newdiv;
+  var twidth;
+  if ( !document.form.ShowMultiple.checked )
+  {
+    whichPanel = 0;
+    olddiv = document.getElementById('monsterDiv');
+    document.getElementById('writeroot').removeChild(olddiv);
+    newdiv = document.createElement('div');
+    newdiv.setAttribute('id','monsterDiv');
+    newdiv.innerHTML="";
+    twidth="100%";
+  } else if (document.form.TwoColumn.checked ) {
+    newdiv = document.getElementById('monsterDiv');
+    twidth = "49%";
+  } else {
+    whichPanel = 0;
+    newdiv = document.getElementById('monsterDiv');
+    twidth = "100%";
+  }
+  
+  var s="";
+
+  for (j=0;j<Monsters[0].childNodes.length;j++)
+  {
+    switch (Monsters[0].childNodes[j].nodeName)
+    {
+      case "Name":  Name=getText(Monsters[id].childNodes[j]); break;
+      case "CR":  CR=getText(Monsters[id].childNodes[j]); break;
+      case "XP":  XP=getText(Monsters[id].childNodes[j]); break;
+      case "Race":  Race=getText(Monsters[id].childNodes[j]); break;
+      case "Class":  Class=getText(Monsters[id].childNodes[j]); break;
+      case "Alignment":  Alignment=getText(Monsters[id].childNodes[j]); break;
+      case "Size":  Size=getText(Monsters[id].childNodes[j]); break;
+      case "Type":  Type=getText(Monsters[id].childNodes[j]); break;
+      case "SubType":  SubType=getText(Monsters[id].childNodes[j]); break;
+      case "Init":  Init=getText(Monsters[id].childNodes[j]); break;
+      case "Senses":  Senses=getText(Monsters[id].childNodes[j]); break;
+      case "Aura":  Aura=getText(Monsters[id].childNodes[j]); break;
+      case "AC":  AC=getText(Monsters[id].childNodes[j]); break;
+      case "AC_Mods":  AC_Mods=getText(Monsters[id].childNodes[j]); break;
+      case "HP":  HP=getText(Monsters[id].childNodes[j]); break;
+      case "HD":  HD=getText(Monsters[id].childNodes[j]); break;
+      case "HP_Mods":  HP_Mods=getText(Monsters[id].childNodes[j]); break;
+      case "Saves":  Saves=getText(Monsters[id].childNodes[j]); break;
+      case "Fort":  Fort=getText(Monsters[id].childNodes[j]); break;
+      case "Ref":  Ref=getText(Monsters[id].childNodes[j]); break;
+      case "Will":  Will=getText(Monsters[id].childNodes[j]); break;
+      case "Save_Mods":  Save_Mods=getText(Monsters[id].childNodes[j]); break;
+      case "DefensiveAbilities":  DefensiveAbilities=getText(Monsters[id].childNodes[j]); break;
+      case "DR":  DR=getText(Monsters[id].childNodes[j]); break;
+      case "Immune":  Immune=getText(Monsters[id].childNodes[j]); break;
+      case "Resist":  Resist=getText(Monsters[id].childNodes[j]); break;
+      case "SR":  SR=getText(Monsters[id].childNodes[j]); break;
+      case "Weaknesses":  Weaknesses=getText(Monsters[id].childNodes[j]); break;
+      case "Speed":  Speed=getText(Monsters[id].childNodes[j]); break;
+      case "Speed_Mod":  Speed_Mod=getText(Monsters[id].childNodes[j]); break;
+      case "Melee":  Melee=getText(Monsters[id].childNodes[j]); break;
+      case "Ranged":  Ranged=getText(Monsters[id].childNodes[j]); break;
+      case "Space":  Space=getText(Monsters[id].childNodes[j]); break;
+      case "Reach":  Reach=getText(Monsters[id].childNodes[j]); break;
+      case "SpecialAttacks":  SpecialAttacks=getText(Monsters[id].childNodes[j]); break;
+      case "SpellLikeAbilities":  SpellLikeAbilities=getText(Monsters[id].childNodes[j]); break;
+      case "SpellsKnown":  SpellsKnown=getText(Monsters[id].childNodes[j]); break;
+      case "SpellsPrepared":  SpellsPrepared=getText(Monsters[id].childNodes[j]); break;
+      case "SpellDomains":  SpellDomains=getText(Monsters[id].childNodes[j]); break;
+      case "AbilitiyScores":  AbilitiyScores=getText(Monsters[id].childNodes[j]); break;
+      case "AbilitiyScore_Mods":  AbilitiyScore_Mods=getText(Monsters[id].childNodes[j]); break;
+      case "BaseAtk":  BaseAtk=getText(Monsters[id].childNodes[j]); break;
+      case "CMB":  CMB=getText(Monsters[id].childNodes[j]); break;
+      case "CMD":  CMD=getText(Monsters[id].childNodes[j]); break;
+      case "Feats":  Feats=getText(Monsters[id].childNodes[j]); break;
+      case "Skills":  Skills=getText(Monsters[id].childNodes[j]); break;
+      case "RacialMods":  RacialMods=getText(Monsters[id].childNodes[j]); break;
+      case "Languages":  Languages=getText(Monsters[id].childNodes[j]); break;
+      case "SQ":  SQ=getText(Monsters[id].childNodes[j]); break;
+      case "Environment":  Environment=getText(Monsters[id].childNodes[j]); break;
+      case "Organization":  Organization=getText(Monsters[id].childNodes[j]); break;
+      case "Treasure":  Treasure=getText(Monsters[id].childNodes[j]); break;
+      case "Group":  Group=getText(Monsters[id].childNodes[j]); break;
+      case "Source":  Source=getText(Monsters[id].childNodes[j]); break;
+      case "IsTemplate":  IsTemplate=getText(Monsters[id].childNodes[j]); break;
+      case "SpecialAbilities":  SpecialAbilities=getText(Monsters[id].childNodes[j]); break;
+      case "Description":  Description=getText(Monsters[id].childNodes[j]); break;
+      case "Gender":  Gender=getText(Monsters[id].childNodes[j]); break;
+      case "Bloodline":  Bloodline=getText(Monsters[id].childNodes[j]); break;
+      case "ProhibitedSchools":  ProhibitedSchools=getText(Monsters[id].childNodes[j]); break;
+      case "BeforeCombat":  BeforeCombat=getText(Monsters[id].childNodes[j]); break;
+      case "DuringCombat":  DuringCombat=getText(Monsters[id].childNodes[j]); break;
+      case "Morale":  Morale=getText(Monsters[id].childNodes[j]); break;
+      case "Gear":  Gear=getText(Monsters[id].childNodes[j]); break;
+      case "OtherGear":  OtherGear=getText(Monsters[id].childNodes[j]); break;
+      case "Vulnerability":  Vulnerability=getText(Monsters[id].childNodes[j]); break;
+      case "Note":  Note=getText(Monsters[id].childNodes[j]); break;
+      case "CharacterFlag":  CharacterFlag=getText(Monsters[id].childNodes[j]); break;
+      case "CompanionFlag":  CompanionFlag=getText(Monsters[id].childNodes[j]); break;
+      case "Fly":  Fly=getText(Monsters[id].childNodes[j]); break;
+      case "Climb":  Climb=getText(Monsters[id].childNodes[j]); break;
+      case "Burrow":  Burrow=getText(Monsters[id].childNodes[j]); break;
+      case "Swim":  Swim=getText(Monsters[id].childNodes[j]); break;
+      case "Land":  Land=getText(Monsters[id].childNodes[j]); break;
+      case "TemplatesApplied":  TemplatesApplied=getText(Monsters[id].childNodes[j]); break;
+    }
+  }
+  AC_DexAdv=0;
+  AC_NatAdv=0;
+  AC_SizeAdv=0;
+  AC_DodgeAdv=0;
+  HDAdv     =0;
+  DCAdv     =0;
+  SkillAdv  =0;
+  HitDice   =0;
+  
+  changeHitDice( 0 ); // get the HitDice variable filled in
+  
+  if ( Save_Mods == "NULL" ) Save_Mods="";
+  if ( AbilitiyScores == "" ) AbilitiyScores="Str 0, Dex 0, Con 0, Int 0, Wis 0, Cha 0"
+  scores = AbilitiyScores.split(" ");
+  Str = scores[1].replace(",","");
+  Dex = scores[3].replace(",","");
+  Con = scores[5].replace(",","");
+  Int = scores[7].replace(",","");
+  Wis = scores[9].replace(",","");
+  Cha = scores[11].replace(",","");
+  if ( AC != "" ) 
+  {
+    ACComponents=AC.split(",")
+    ACBase=ACComponents[0];
+    ACTouch=trimAll(ACComponents[1]).split(" ")[1];
+    ACFlatFooted=trimAll(ACComponents[2]).split(" ")[1];
+  } else {
+    ACBase=0;
+    ACTouch=0;
+    ACFlatFooted=0;
+  } 
+  
+  // do the advancements
+  Advancement="";
+  OriginalCR = CR;
+  RacialHitDice = safeParseInt(document.form.RacialHitDice.value);
+  AdjustSize = safeParseInt(document.form.AdjustSize.value);
+  AdjustSpeed = safeParseInt(document.form.AdjustSpeed.value);
+
+  if ( document.form.Young.checked ) young(1);
+  if ( document.form.Young2.checked ) young(2);
+  if ( document.form.Young3.checked ) young(3);
+  if ( document.form.Young4.checked ) young(4);
+  if ( document.form.Giant.checked ) giant(1);
+  if ( document.form.Giant2.checked ) giant(2);
+  if ( document.form.Giant3.checked ) giant(3);
+  if ( document.form.Giant4.checked ) giant(4);
+  if ( document.form.Fiendish.checked ) fiendish(1);
+  if ( document.form.Celestial.checked ) celestial(1);
+  if ( document.form.Advanced.checked ) advanced(1);
+  if ( document.form.Advanced2.checked ) advanced(2);
+  if ( document.form.Advanced3.checked ) advanced(3);
+  if ( document.form.Advanced4.checked ) advanced(4);
+  if ( document.form.AugmentSummoning.checked ) augmentSummoning(1);
+  if ( document.form.Half_Dragon.checked ) half_dragon();
+  if ( document.form.Half_Fiend.checked ) half_fiend();
+  if ( document.form.Skeleton.checked ) skeleton();
+  if ( document.form.SkeletonBloody.checked ) skeleton("Bloody");
+  if ( document.form.SkeletonBurning.checked ) skeleton("Burning");
+  if ( document.form.Zombie.checked ) zombie();
+  if ( document.form.ZombieFast.checked ) zombie("Fast");
+  if ( document.form.ZombiePlague.checked ) zombie("Plague");
+  if ( document.form.Mighty.checked ) mighty(1);
+  if ( document.form.Dire.checked ) dire(1);
+  
+  if ( RacialHitDice != 0 ) racialHitDice( RacialHitDice );
+  if ( AdjustSize != 0 ) adjustSize( AdjustSize );
+  if ( AdjustSpeed != 0 ) adjustSpeed( AdjustSpeed ); // function adjustSpeed needs to happen sometime after mighty
+  
+  if ( CR != OriginalCR )
+    XP = getXP(CR);
+    
+  // do the stat block
+  if ( Advancement != "" ) NewName = Name+" ( "+Advancement+") ";
+  else NewName = Name;
+  s+="<font style='color: white; background-color: black'><b>"+NewName+
+    Array(80 - NewName.length).join("&nbsp;")+" CR "+CR+"</b></font><br>"
+  s+="<b>XP "+XP+"</b><br>"
+  if ( Race != "" || Class != "") s += Race+" "+Class+"<br>"
+  s+=Alignment+" "+Size+" "+Type+" "+SubType+"<br>"
+  s+="<b>Init</b> "+addplus(Init)+"; <b>Senses</b> "+Senses+"<br>"
+  if ( Aura != "" ) s+="<b>Aura</b> "+Aura+"<br>"
+  
+  s+="<font size='-2'><hr align='left' width='70%'><b>DEFENSE</b><hr align='left' width='70%'></font>"
+  if ( AC != "" ) 
+    s+="<b>AC</b> "+ACBase+", <B>touch</b> "+ACTouch+", <B>flat-footed</b> "+ACFlatFooted+" ";
+  AC_Mods = changeAPreValue(AC_NatAdv, "natural", AC_Mods, true);
+  AC_Mods = changeAPreValue(AC_DexAdv, "Dex", AC_Mods, true);
+  AC_Mods = changeAPreValue(AC_SizeAdv, "size", AC_Mods, true);
+  AC_Mods = changeAPreValue(AC_DodgeAdv, "dodge", AC_Mods, true);
+  s+=AC_Mods
+  s+="<br>"
+  addHpToHD(HDAdv);
+  s+="<b>hp</b> "+HP+" "+HD
+  s+=" "+HP_Mods+"<br>"
+  s+="<b>Fort</b> "+addplus(Fort)+", <b>Ref</b> "+addplus(Ref)+", <b>Will</b> "+addplus(Will)+"; "+Save_Mods+"<br>"
+  if ( DefensiveAbilities != "" ) s+="<b>Defensive Abilities</b> "+DefensiveAbilities+"; "
+  if ( DR != "" ) s+="<b>DR</b> "+DR+"; "
+  if ( Immune != "" ) s+="<b>Immune</b> "+Immune+"; "
+  if ( Resist != "" ) s+="<b>Resist</b> "+Resist+"; "
+  if ( SR != "" ) s+="<b>SR</b> "+SR+";"
+  if (( SR != "" ) || ( DefensiveAbilities != "" ) || ( Immune != "" ) || ( DR != "" )) s+="<br>";
+  
+   if ( Weaknesses != "" ) s+="<b>Weaknesses</b> "+Weaknesses+"<br>"
+ 
+  s+="<font size='-2'><hr align='left' width='70%'><b>OFFENSE</b><hr align='left' width='70%'></font>"
+  s+="<b>Speed</b> "+Speed+" "+Speed_Mod+"<br>"
+  if ( Melee != "" ) 
+  {
+    s+="<b>Melee</b> "+Melee+"<br>";
+  }
+  if ( Ranged != "" ) 
+  {
+    s+="<b>Ranged</b> "+Ranged+"<br>";
+  }
+  s+="<b>Space</b> "+Space+"<b>Reach</b> "+Reach+"<br>"
+  if ( SpecialAttacks != "" ) s+="<b>Special Attacks</b> "+SpecialAttacks+"<br>"
+  if ( SpellLikeAbilities != "" ) s+="<b>Spell-Like Abilities</b> "+SpellLikeAbilities.substr(21)+"<br>"
+  
+  s+="<font size='-2'><hr align='left' width='70%'><b>STATISTICS</b><hr align='left' width='70%'></font>"
+  s+="<b>Str</b> "+Str+", <b>Dex</b> "+Dex+", <b>Con</b> "+Con
+  s+=", <b>Int</b> "+Int+", <b>Wis</b> "+Wis+", <b>Cha</b> "+Cha+"; "+AbilitiyScore_Mods+"<br>"
+  s+="<b>Base Atk</b> "+BaseAtk+"; <b>CMB</b> "+CMB+"; <b>CMD</b> "+CMD+"<br>"
+  if ( Feats != "" ) s+="<b>Feats</b> "+Feats+"<br>"
+  if ( Skills != "" ) 
+  {
+        s+="<b>Skills</b> "+Skills
+        if ( RacialMods != "" )
+            s+="; <b>Racial Modifiers</b> "+RacialMods
+        s+="<br>"
+  }
+  if ( Languages != "" ) s+="<b>Languages</b> "+Languages+"<br>"
+  if ( SQ != "" ) s+="<b>SQ</b> "+SQ+"<br>"
+  
+  if ( Environment != "" )
+  {
+    s+="<font size='-2'><hr align='left' width='70%'><b>ECOLOGY</b><hr align='left' width='70%'></font>"
+    s+="<b>Environment</b> "+Environment+"<br>"
+    s+="<b>Organization</b> "+Organization+"<br>"
+    s+="<b>Treasure</b> "+Treasure+"<br>"
+  }
+  
+  if ( SpecialAbilities != "" )
+  {
+    s+="<font size='-2'><hr align='left' width='70%'><b>SPECIAL ABILITIES</b><hr align='left' width='70%'></font>"
+    var regexp = new RegExp(/\.\s([\w\s]*\((Ex|Su|Sp)\))/g);
+    var SpecialAbilitiesBR = SpecialAbilities.replace(regexp,".<br/><br/>$1");
+    s+=SpecialAbilitiesBR+"<br>";
+  }
+  
+  if ( (Description != "") && (document.form.IncDesc.checked) )
+  {
+    s+="<font size='-2'><hr align='left' width='70%'><b>DESCRIPTION</b><hr align='left' width='70%'></font>"
+    var regexp = new RegExp(/\.\s([\w\s]*\((Ex|Su|Sp)\))/g);
+    var DescriptionBR = Description.replace(regexp,".<br/><br/>$1");
+    s+=DescriptionBR+"<br>";
+  }
+
+  if ( Source != "" )
+  {
+    s+="<font size='-2'>Source: "+Source+"</font><br>"
+  }
+  
+  rowstr="";
+  if (IE)
+  {
+    if ( newdiv.innerHTML == "&nbsp;" ) 
+    {
+        newdiv.innerHTML = '<tr><td></td></tr>'
+    }
+    if ( whichPanel == 0 ) 
+    {
+        newdiv.innerHTML = "<tr><td width='"+twidth+"'><hr>"+s+"</td></tr>" + newdiv.innerHTML; 
+    }
+    else
+    {
+        if ( newdiv.innerHTML.substr( 0,4 ) == "<tr>" )
+            oldinner = newdiv.innerHTML.substr( 4, newdiv.innerHTML.length );
+        else
+            oldinner = newdiv.innerHTML;
+        newdiv.innerHTML = "<tr><td width='"+twidth+"'><hr>"+s+"</td><td width='2%'> </td>"+oldinner; 
+    }
+  } 
+  else 
+    {
+        if ( newdiv.innerHTML == "&nbsp;" ) 
+    {
+        newdiv.innerHTML = '<table><tbody><tr valign="top"></tr></tbody></table>'
+    }
+    if ( whichPanel == 0 ) 
+    {
+        newdiv.innerHTML = "<table><tbody><tr valign=\"top\"><td width='"+twidth+"'><hr>"+s+"</td></tr><tr valign=\"top\">" + newdiv.innerHTML.substr(31,newdiv.innerHTML.length); 
+    }
+    else
+    {
+        if ( newdiv.innerHTML.substr( 0,31 ) == "<table><tbody><tr valign=\"top\">" )
+            oldinner = newdiv.innerHTML.substr( 31, newdiv.innerHTML.length );
+        else
+            oldinner = newdiv.innerHTML;
+        newdiv.innerHTML = "<table><tbody><tr valign=\"top\"><td width='"+twidth+"'><hr>"+s+"</td><td width='2%'> </td>"+oldinner; 
+    }
+  }
+  document.getElementById('writeroot').appendChild(newdiv);
+  if ( document.form.ShowMultiple.checked )
+  {
+    whichPanel = (whichPanel + 1) % 2;
+  } 
+  
+  status(" ");
+
+}
+
+function addplus( str )
+{
+    trimed = trimAll(str+"");
+    if (( trimed.substr(0,1) != "+" ) && ( trimed.substr(0,1) != "-" ))
+        return "+"+trimed;
+    return str;
+}
+
+function clearform()
+{
+    document.form.Advanced.checked=false;
+    document.form.Advanced2.checked=false;
+    document.form.Advanced3.checked=false;
+    document.form.Advanced4.checked=false;
+    document.form.Celestial.checked=false;
+    document.form.Fiendish.checked=false;
+    document.form.Giant.checked=false;  
+    document.form.Giant2.checked=false;  
+    document.form.Giant3.checked=false;
+    document.form.Giant4.checked=false;
+    document.form.Young.checked=false;  
+    document.form.Young2.checked=false;  
+    document.form.Young3.checked=false;
+    document.form.Young4.checked=false;
+    document.form.RacialHitDice.value=0;
+    document.form.AdjustSize.value=0;
+    document.form.AdjustSpeed.value=0;
+    document.form.AugmentSummoning.checked=false;  
+    document.form.Half_Dragon.checked=false;  
+    document.form.Half_Fiend.checked=false;  
+    document.form.Skeleton.checked=false;  
+    document.form.SkeletonBloody.checked=false;  
+    document.form.SkeletonBurning.checked=false;  
+    document.form.Zombie.checked=false; 
+    document.form.ZombieFast.checked=false; 
+    document.form.ZombiePlague.checked=false;
+    document.form.Mighty.checked=false;
+    document.form.Dire.checked=false;
+    whichPanel=0;
+    div = document.getElementById('monsterDiv');
+    div.innerHTML="&nbsp;";
+}
+
+function status( str )
+{
+    if ( document.getElementById('Status') != null )
+        document.getElementById('Status').innerHTML = "<i>"+str+"</i>";
+}
+
+function getHDType()
+{
+  var hdType = 0;
+  if ( HD != "" ) 
+  {
+    start = HD.search( "[d]" );
+    end = HD.search( "[+)]" );
+    if ( (end > start) && (start >= 0) )
+    {
+        hdType = safeParseInt(HD.substring(start+1,end));
+        if ( hdType < 1 ) hdType = 1;
+        if ( isNaN(hdType) ) hdType = 0;
+    }
+  }
+  return hdType;
+}
+
+function isNull(anode)
+{
+  if (anode.toString()=='undefined'){ return true;} 
+  else if (anode.toString()=='NULL'){ return true;} 
+  else return false;
+}
+
+function isEmpty(str)
+{
+  if ( typeof(str) == 'undefined') return true;
+  if (str == null) return true;
+  if (str == "") return true;
+  return false;
+}
+
+function changeHitDice( amount )
+{
+  if ( !isEmpty(HD) ) 
+  {
+    start = HD.search( "[(]" );
+    end = HD.search( "[d]" );
+    if ( (end > start) && (start >= 0) )
+    {
+        HitDice = safeParseInt(HD.substring(start+1,end))+amount;
+        if ( HitDice < 1 ) HitDice = 1;
+        if ( amount != 0 ) 
+            HD = "("+HitDice+HD.substring(end);
+    }
+  } else HD = 0
+}
+
+function getXP( crstr )
+{
+    switch ( crstr )
+    {
+        case "1/8": return 50;
+        case "1/6": return 65;
+        case "1/4": return 100;
+        case "1/3": return 135;
+        case "1/2": return 200;
+        default:
+            crval = safeParseInt(crstr);
+            if ( crval < .124 ) return 0;
+            if ( crval < 1 ) return 400/crval;
+            if ( crval < 1.5 ) return 400;
+            if ( crval < 2.5 ) return 600;
+            if ( crval < 3.5 ) return 800;
+            if ( crval < 4.5 ) return 1200;
+            if ( crval < 5.5 ) return 1600;
+            if ( crval < 6.5 ) return 2400;
+            if ( crval < 7.5 ) return 3200;
+            if ( crval < 8.5 ) return 4800;
+            if ( crval < 9.5 ) return 6400;
+            if ( crval < 10.5 ) return 9600;
+            if ( crval < 11.5 ) return 12800;
+            if ( crval < 12.5 ) return 19200;
+            if ( crval < 13.5 ) return 25600;
+            if ( crval < 14.5 ) return 38400;
+            if ( crval < 15.5 ) return 51200;
+            if ( crval < 16.5 ) return 76800;
+            if ( crval < 17.5 ) return 102400;
+            if ( crval < 18.5 ) return 153600;
+            if ( crval < 19.5 ) return 204800;
+            if ( crval < 20.5 ) return 307200;
+            if ( crval < 21.5 ) return 409600;
+            if ( crval < 22.5 ) return 614400;
+            if ( crval < 23.5 ) return 819200;
+            if ( crval < 24.5 ) return 1228800;
+            if ( crval < 25.5 ) return 1638400;
+            if ( crval < 26.5 ) return 2457600;
+            if ( crval < 27.5 ) return 3276800;
+            if ( crval < 28.5 ) return 4915200;
+            if ( crval < 29.5 ) return 6553600;
+            if ( crval < 30.5 ) return 9830400;
+            if ( crval < 31.5 ) return 13120000;
+            if ( crval < 32.5 ) return 19680000;
+            if ( crval < 33.5 ) return 26240000;
+            if ( crval < 34.5 ) return 39360000;
+            if ( crval < 35.5 ) return 52480000;
+            if ( crval < 36.5 ) return 78720000;
+            if ( crval < 37.5 ) return 104960000;
+            if ( crval < 38.5 ) return 157440000;
+            if ( crval < 39.5 ) return 209920000;
+            return 314880000;
+    }
+    return 0;
+}
+
+function advanced( amount )
+{
+    if ( Str != "" && Str > 0) Str=safeParseInt(Str)+4*amount;
+    if ( Dex != "" && Dex > 0) Dex=safeParseInt(Dex)+4*amount;
+    if ( Con != "" && Con > 0) Con=safeParseInt(Con)+4*amount;
+    if ( Int != "" && Int > 2) Int=safeParseInt(Int)+4*amount;
+    if ( Wis != "" && Wis > 0) Wis=safeParseInt(Wis)+4*amount;
+    if ( Cha != "" && Cha > 0) Cha=safeParseInt(Cha)+4*amount;
+    if ( Fort != "" && Fort > -90) Fort=safeParseInt(Fort)+2*amount;
+    if ( Ref  != "" && Ref  > -90) Ref =safeParseInt(Ref)+2*amount;
+    if ( Will != "" && Will > -90) Will=safeParseInt(Will)+2*amount;
+    if ( Init != "")              
+    {
+        Init=safeParseInt(Init)+2*amount;
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+    if ( AC != "" )                 
+    {
+        ACBase = safeParseInt(ACBase) + 4 * amount;
+        ACTouch = safeParseInt(ACTouch) + 2 * amount;
+        ACFlatFooted = safeParseInt(ACFlatFooted) + 2 * amount;
+        AC_DexAdv += 2*amount;
+        AC_NatAdv += 2*amount;
+    }
+    Advancement+="Advanced "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HP != "" ) 
+    {
+        hpchange = 2*amount*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixAttacks(2*amount, 2*amount, 0);
+    fixDC(2*amount);
+    fixSkills( 2*amount, 2*amount, 2*amount, 2*amount, 2*amount, 0);
+    fixCR(amount);
+    fixCMB( +2*amount, 0);
+    fixCMD( +2*amount, +2*amount, 0);
+}
+
+function young( amount )
+{
+    // I'm going to just change the size and adjust using those instead of this
+    //if ( Str != "" ) Str=parseInt(Str)-4*amount;
+    //if ( Dex != "" ) Dex=parseInt(Dex)+4*amount;
+    //if ( Con != "" ) Con=parseInt(Con)-4*amount;
+    fixStatsAtksBySize( -amount );
+
+    if ( AC != "" )                 
+    {
+        fixAC( -amount, 0 );
+    }
+    Advancement+="Young "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HP != "" ) 
+    {
+        hpchange = -2*amount*HitDice;
+        HDAdv += hpchange;
+        HP = safeParseInt(HP) + hpchange;
+    }
+    fixDC(-2*amount);
+    fixSkills( -2*amount, +2*amount, 0, 0, 0, -amount);
+    fixCR( -amount );
+    fixCMB( -2*amount, -amount);
+    fixCMD( -2*amount, +2*amount, -amount);
+    changeSize( -amount );
+}
+
+function giant( amount )
+{
+    fixStatsAtksBySize( amount );
+
+    if ( AC != "" )                 
+    {
+        fixAC( amount, 0 )
+    }
+    Advancement+="Giant "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HP != "" ) 
+    {
+        hpchange = 2*amount*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixDC(2*amount);
+    fixSkills( 2*amount, -1*amount, 0, 0, 0, amount);
+    fixCR(amount);
+    fixCMB( +2*amount, amount);
+    fixCMD( +2*amount, -1*amount, amount);
+    changeSize( amount );
+}
+
+function celestial( amount )
+{
+    Advancement+="Celestial "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HitDice > 4 ) fixCR(1)
+    if ( Senses.indexOf("arkvision") == -1 ) Senses = "darkvision 60 ft.; " + Senses;
+
+    if ( SpecialAttacks != "" ) SpecialAttacks += "; ";
+    SpecialAttacks += "Smite Evil 1/day <font -2>(swift action, +Cha bonus to attack, +HD bonus to damage; persists until target dead or creature rests).</font>"
+    
+    if ( HitDice < 5 ) res = 5;
+    else if ( HitDice < 11 ) res = 10;
+    else res = 15;
+    addResistance("acid",res);
+    addResistance("cold",res);
+    addResistance("electricity",res);
+
+    if ( HitDice > 4 ) 
+    {
+        if ( DR != "" ) DR += "; "
+        if ( HitDice < 11 ) DR += "5/evil";
+        else DR += "10/evil";
+    }
+    
+    srval = safeParseInt(SR);
+    newsr = safeParseInt(CR) + 5;
+    if ( newsr > srval ) SR = newsr;
+}
+
+function fiendish( amount )
+{
+    Advancement+="Fiendish "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HitDice > 4 ) fixCR(1)
+    if ( Senses.indexOf("arkvision") == -1 ) Senses = "darkvision 60 ft.; " + Senses;
+    
+    if ( SpecialAttacks != "" ) SpecialAttacks += "; ";
+    SpecialAttacks += "Smite Good 1/day <font -2>(swift action, +Cha bonus to attack, +HD bonus to damage; persists until target dead or creature rests).</font>"
+    
+    if ( HitDice < 5 ) res = 5;
+    else if ( HitDice < 11 ) res = 10;
+    else res = 15;
+    addResistance("cold",res);
+    addResistance("fire",res);
+
+    if ( HitDice > 4 ) 
+    {
+        if ( DR != "" ) DR += "; "
+        if ( HitDice < 11 ) DR += "5/good";
+        else DR += "10/good";
+    }
+    
+    srval = safeParseInt(SR);
+    newsr = safeParseInt(CR) + 5;
+    if ( newsr > srval ) SR = newsr;
+}
+
+function augmentSummoning( amount )
+{
+    Advancement+="AugmentSummoning "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( Str != "" ) Str=safeParseInt(Str)+4*amount;
+    if ( Con != "" ) Con=safeParseInt(Con)+4*amount;
+
+    if ( HP != "" ) 
+    {
+        hpchange = 2*amount*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    if ( Fort != "" ) Fort=safeParseInt(Fort)+2*amount;
+    fixCMB( 2*amount, 0 );
+    fixCMD( 2*amount, 0, 0);
+    fixSkills( 2*amount, 0, 0, 0, 0, 0 );
+    fixAttacks( 2*amount, 0, 0)
+    fixDC( 2*amount );
+}
+
+function mighty( amount ) {
+    Advancement+="Mighty "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( Fort != "" && Fort > -90) Fort=safeParseInt(Fort)+5*amount;
+    if ( Ref  != "" && Ref  > -90) Ref =safeParseInt(Ref)+5*amount;
+    if ( Will != "" && Will > -90) Will=safeParseInt(Will)+5*amount;
+    if ( Init != "") {
+        Init=safeParseInt(Init)+5*amount;
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+    if ( AC != "" ) {
+        ACBase = safeParseInt(ACBase) + 5 * amount;
+        ACTouch = safeParseInt(ACTouch) + 5 * amount;
+		AC_DodgeAdv += 5*amount;
+    }
+
+    if ( HP != "" ) {
+        hpchange = 10*amount*HitDice > 50 ? 10*amount*HitDice : 50;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixCMB( 10*amount, 0 );
+    fixCMD( 15*amount, 0, 0 );
+    fixSkills( 5*amount, 5*amount, 5*amount, 5*amount, 5*amount, 0 );
+    fixAttacks( 10*amount, 10*amount, 0 )
+    fixDC( 7*amount );
+    fixCR( 5*amount );
+	
+    landSpeed = parseInt(Speed);
+    if ( isNaN(landSpeed) ) landSpeed = 0;
+    changeSpeed( "land", landSpeed < 30 ? landSpeed*2 : landSpeed+30, true, "" );
+	
+    flySpeed = parseInt(Fly);
+    if ( flySpeed ) changeSpeed( "fly", flySpeed < 30 ? flySpeed*2 : flySpeed+30, true, "" );
+}
+
+function dire( amount ) {
+    Advancement+="Dire "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( Str != "" && Str > 0) Str=safeParseInt(Str)+8*amount;
+    if ( Dex != "" && Dex > 0) Dex=safeParseInt(Dex)+2*amount;
+    if ( Con != "" && Con > 0) Con=safeParseInt(Con)+8*amount;
+    if ( Wis != "" && Wis > 0) Wis=safeParseInt(Wis)+4*amount;
+    if ( Cha != "" && Cha > 0) Cha=safeParseInt(Cha)+4*amount;
+    if ( Fort != "" && Fort > -90) Fort=safeParseInt(Fort)+4*amount;
+    if ( Ref  != "" && Ref  > -90) Ref =safeParseInt(Ref)+1*amount;
+    if ( Will != "" && Will > -90) Will=safeParseInt(Will)+2*amount;
+    if ( Init != "") {
+        Init=safeParseInt(Init)+1*amount;
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+    if ( AC != "" ) {
+        ACBase = safeParseInt(ACBase) + 6 * amount;
+        ACTouch = safeParseInt(ACTouch) + 1 * amount;
+        ACFlatFooted = safeParseInt(ACFlatFooted) + 5 * amount;
+        AC_DexAdv += 1*amount;
+		AC_DodgeAdv += 5*amount;
+    }
+    changeSize( amount );
+
+    if ( HP != "" ) {
+        hpchange = 10*amount*HitDice > 50 ? 10*amount*HitDice : 50;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixCMB( 10*amount, 0 );
+    fixCMD( 15*amount, 0, 0 );
+    fixSkills( 4*amount, 1*amount, 5*amount, 5*amount, 5*amount, 0 );
+    fixAttacks( 10*amount, 10*amount, 0 )
+    fixDC( 7*amount );
+    fixCR( 2*amount );
+	
+    landSpeed = parseInt(Speed);
+    if ( isNaN(landSpeed) ) landSpeed = 0;
+    changeSpeed( "land", landSpeed+10, true, "" );
+	
+    flySpeed = parseInt(Fly);
+    if ( flySpeed ) changeSpeed( "fly", flySpeed+10, true, "" );
+	
+	
+    if ( Str != "" && Str > 0) Str=safeParseInt(Str)+4*amount;
+    if ( Dex != "" && Dex > 0) Dex=safeParseInt(Dex)+4*amount;
+    if ( Con != "" && Con > 0) Con=safeParseInt(Con)+4*amount;
+    if ( Int != "" && Int > 2) Int=safeParseInt(Int)+4*amount;
+    if ( Wis != "" && Wis > 0) Wis=safeParseInt(Wis)+4*amount;
+    if ( Cha != "" && Cha > 0) Cha=safeParseInt(Cha)+4*amount;
+    if ( Fort != "" && Fort > -90) Fort=safeParseInt(Fort)+2*amount;
+    if ( Ref  != "" && Ref  > -90) Ref =safeParseInt(Ref)+2*amount;
+    if ( Will != "" && Will > -90) Will=safeParseInt(Will)+2*amount;
+    if ( Init != "")              
+    {
+        Init=safeParseInt(Init)+2*amount;
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+    if ( AC != "" )                 
+    {
+        ACBase = safeParseInt(ACBase) + 4 * amount;
+        ACTouch = safeParseInt(ACTouch) + 2 * amount;
+        ACFlatFooted = safeParseInt(ACFlatFooted) + 2 * amount;
+        AC_DexAdv += 2*amount;
+        AC_NatAdv += 2*amount;
+    }
+    Advancement+="Advanced "
+    if ( amount > 1 ) Advancement+="x"+amount+" "
+    if ( HP != "" ) 
+    {
+        hpchange = 2*amount*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixAttacks(2*amount, 2*amount, 0);
+    fixDC(2*amount);
+    fixSkills( 2*amount, 2*amount, 2*amount, 2*amount, 2*amount, 0);
+    fixCR(amount);
+    fixCMB( +2*amount, 0);
+    fixCMD( +2*amount, +2*amount, 0);
+}
+
+var DragonTypes=["Black","Blue","Brass","Bronze","Copper","Gold","Green","Red","Silver","White","Random"];
+var DragonBreaths=["60-foot line of acid","60-foot line of electricity","60-foot line of fire","60-foot line of electricity",
+                "60-foot line of acid","30-foot cone of fire","30-foot cone of acid","30-foot cone of fire","30-foot cone of cold",
+                "30-foot cone of cold","-"];
+var DragonEnergies=["acid","electricity","fire","electricity","acid","fire","acid","fire","cold","cold","-"];   
+        
+function half_dragon( )
+{
+    // adjust the stats
+    if ( Str != "" ) Str=safeParseInt(Str)+8;
+    if ( Con != "" ) Con=safeParseInt(Con)+6;
+    if ( Int != "" ) Int=safeParseInt(Int)+2;
+    if ( Cha != "" ) Cha=safeParseInt(Cha)+2;
+    if ( Fort != "" ) Fort=safeParseInt(Fort)+3;
+    if ( HP != "" ) 
+    {
+        hpchange = 3*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixAttacks(4, 0, 0);
+    fixDC(2); // DCs depend on different stats, but lets guess at 2 for here
+    fixSkills( 4, 0, 1, 0, 1, 0);
+    fixCMB( 4, 0);
+    fixCMD( 4, 0, 0);
+
+    // Need to know what dragon type
+    var dragonType="";
+    var dragonBreath="";
+    var dragonEngery="";
+    while (dragonType=="") {
+        p="Choose a dragon type:";
+        for (i=0; i<DragonTypes.length; i++) {
+            p+="\n\t"+(i+1)+" "+DragonTypes[i];
+        }
+        n=prompt(p,DragonTypes.length);
+        num=safeParseInt(n);
+        if (n == null) {
+            num=DragonTypes.length;
+        } 
+        if ((num>0) && (num<=DragonTypes.length)) {
+            if ( num == DragonTypes.length) {
+                num = Math.floor(Math.random()*DragonTypes.length); 
+            }
+            dragonType = DragonTypes[num-1];
+            dragonBreath = DragonBreaths[num-1];
+            dragonEnergy = DragonEnergies[num-1];
+        }
+    }   
+    Advancement+="Half-"+dragonType+"-Dragon "
+    // CR increases by 2, minimum of 3
+    fixCR(2);
+    if (safeParseInt(CR) < 3)
+        CR="3";
+    // Type becomes dragon
+    Type="dragon";
+    // Natural AC increases by 4
+    ACBase = safeParseInt(ACBase)+4;
+    ACFlatFooted = safeParseInt(ACFlatFooted) + 4;
+    AC_NatAdv+=4;
+    // Special qualities
+    if ( Senses.indexOf("arkvision") == -1 ) Senses = "darkvision 60 ft.; " + Senses;
+    if ( Senses.indexOf("low-light vision") == -1 ) Senses = "low-light vision; " + Senses;
+    if ( Immune.length > 0 ) sep = ", "; else sep ="";
+    if ( Immune.indexOf("sleep") == -1 ) Immune = "sleep" + sep + Immune;
+    if ( Immune.indexOf("paralysis") == -1 ) Immune = "paralysis, " + Immune;
+    if ( Immune.indexOf(dragonEnergy) == -1 ) Immune = dragonEnergy+ ", " + Immune;
+    // speed, add fly at twice base speed
+    landSpeed = parseInt(Speed);
+    if ( isNaN(landSpeed) ) landSpeed = 30;
+    changeSpeed("fly",landSpeed * 2,true,"average");
+    // Melee - add claw and bite attacks
+    addNaturalAttack(1, "bite");
+    addNaturalAttack(2, "claw");
+    
+    // add breath weapon
+    if ( SpecialAttacks != "" ) SpecialAttacks += ", ";
+    dc=10 + Math.floor((safeParseInt(HitDice)/2)) + Math.floor((safeParseInt(Con)-10)/2);
+    SpecialAttacks += "breath weapon ("+dragonBreath+", "+HitDice+"d6 "+dragonEnergy+" damage, Reflex DC "+dc+" half)";
+}
+
+function half_fiend( )
+{
+    Advancement+="Half-Fiend ";
+
+    // adjust the stats, add +4 to top 3, and +2 to the other three
+    var statchange = [2,2,2,2,2,2];
+    var statvals = [safeParseInt(Str),safeParseInt(Dex),safeParseInt(Con),
+                     safeParseInt(Int),safeParseInt(Wis),safeParseInt(Cha)];
+    var i, j;
+    for (i=0; i<3; i++) {
+        var maxstatval=-10;
+        var maxstat=-1;
+        for (j=0; j<statvals.length; j++) {
+            if ( (statvals[j]>maxstatval) && (statchange[j]==2) ) {
+                maxstatval = statvals[j];
+                maxstat=j;
+            }
+        }
+        statchange[maxstat]=4;
+    }
+    
+    // Don't need Math.floor on all the divide by 2 since the numbers are 2 or 4
+    if ( Str != "" ) Str=safeParseInt(Str)+statchange[0];
+    if ( Dex != "" ) Dex=safeParseInt(Dex)+statchange[1];
+    if ( Con != "" ) Con=safeParseInt(Con)+statchange[2];
+    if ( Int != "" ) Int=safeParseInt(Int)+statchange[3];
+    if ( Wis != "" ) Wis=safeParseInt(Wis)+statchange[4];
+    if ( Cha != "" ) Cha=safeParseInt(Cha)+statchange[5];
+    if ( Fort != "" ) Fort=safeParseInt(Fort)+statchange[2]/2;
+    if ( Ref != "" )  Ref=safeParseInt(Ref)+statchange[1]/2;
+    if ( Will != "" ) Will=safeParseInt(Will)+statchange[4]/2;
+    if ( Init != "" )              
+    {
+        Init=safeParseInt(Init)+statchange[1]/2;
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+
+    if ( HP != "" ) 
+    {
+        hpchange = statchange[2]/2*HitDice;
+        HDAdv+=hpchange;
+        HP=safeParseInt(HP)+hpchange;
+    }
+    fixAttacks(statchange[0]/2,statchange[1]/2, 0);
+    fixDC(1); // DCs depend on different stats, but lets guess at 1 for here
+    fixSkills( statchange[0]/2,statchange[1]/2,statchange[3]/2,statchange[4]/2, statchange[5]/2, 0);
+    fixCMB( statchange[0]/2, 0);
+    fixCMD( statchange[0]/2, statchange[1]/2, 0);
+
+    // CR increases by 1, 2, or 3
+    hd = safeParseInt(HitDice);
+    if ( hd < 5 ) crmod=1;
+    else if ( hd < 11 ) crmod=2;
+    else crmod = 3;
+    fixCR(crmod);
+    // Type becomes dragon
+    Type="outsider";
+    SubType = "(native)";
+    // Natural AC increases by 4
+    ACBase = safeParseInt(ACBase)+1+statchange[1]/2;
+    ACFlatFooted = safeParseInt(ACFlatFooted) + 1;
+    ACTouch = safeParseInt(ACTouch)+statchange[1]/2;
+    AC_NatAdv += 1;
+    AC_DexAdv += statchange[1]/2;
+    
+    // Special qualities
+    if ( Senses.indexOf("arkvision") == -1 ) Senses = "darkvision 60 ft.; " + Senses;
+    if ( Immune.length > 0 ) sep=", "; else sep="";
+    if ( Immune.indexOf("poison") == -1 ) Immune = "poison" + sep + Immune;
+    addResistance("acid",10);
+    addResistance("cold",10);
+    addResistance("electricity",10);
+    addResistance("fire",10);
+    if ( DR != "" ) DR += ", ";
+    if ( hd < 12 ) DR += "5/magic";
+    else DR += "10/magic";
+    SR = safeParseInt(SR);
+    newsr = Math.min(safeParseInt(CR) + 11,35);
+    if ( SR < newsr ) SR = newsr;
+    Alignment="Any evil";
+    // speed, add fly at twice base speed
+    landSpeed = parseInt(Speed);
+    if ( isNaN(landSpeed) ) landSpeed = 30;
+    changeSpeed("fly",landSpeed * 2,true,"average");
+    // Melee - add claw and bite attacks
+    addNaturalAttack(1, "bite");
+    addNaturalAttack(2, "claw");
+    
+    // add speical attacks
+    if ( SpecialAttacks != "" ) SpecialAttacks += ", ";
+    SpecialAttacks += "smite good 1/day"
+    if ( SpecialAbilities != "" ) SpecialAbilities += ", ";
+    SpecialAbilities += "Smite Good(Su): Once per day it can add extra damage equal to its HD (maximum of +20) against a good foe.";
+    if ( (safeParseInt(Int) > 7) || (safeParseInt(Wis) > 7)) {
+        dc = 10 + Math.floor((safeParseInt(Cha)-10)/2);
+        if ( SpellLikeAbilities != "" ) SpellLikeAbilities += ", ";
+        else SpellLikeAbilities = "Spell-Like Abilities ";
+        SpellLikeAbilities += "(CL "+HitDice+") ";
+        if (hd <= 2) 
+            SpellLikeAbilities += "3/day - darkness;";
+        else if (hd <= 4)
+            SpellLikeAbilities += "3/day - darkness; 1/day - desecrate;";
+        else if (hd <= 6)
+            SpellLikeAbilities += "3/day - darkness; 1/day - desecrate, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 8)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"); 1/day - desecrate, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 10)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"); 1/day - contagion (DC "+(dc+3)+"), desecrate, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 12)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"); 1/day - blasphemy (DC "+(dc+7)+"), contagion (DC "+(dc+3)+"), desecrate, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 14)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"), unholy aura; 1/day - blasphemy (DC "+(dc+7)+"), contagion (DC "+(dc+3)+"), desecrate, unhallow, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 16)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"), unholy aura; 1/day - blasphemy (DC "+(dc+7)+"), contagion (DC "+(dc+3)+"), desecrate, horrid wilting (DC "+(dc+8)+"), unhallow, unholy blight (DC "+(dc+4)+");";
+        else if (hd <= 18)
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"), unholy aura; 1/day - blasphemy (DC "+(dc+7)+"), contagion (DC "+(dc+3)+"), desecrate, horrid wilting (DC "+(dc+8)+"), summon monster IX, unhallow, unholy blight (DC "+(dc+4)+");";
+        else
+            SpellLikeAbilities += "3/day - darkness, poison (DC "+(dc+4)+"), unholy aura; 1/day - blasphemy (DC "+(dc+7)+"), contagion (DC "+(dc+3)+"), desecrate, destruction (DC "+(dc+7)+"), horrid wilting (DC "+(dc+8)+"), summon monster IX, unhallow, unholy blight (DC "+(dc+4)+");";
+    }
+}
+
+// Table 2-1
+var HP2CR = [0,5,5,10,10,15,15,15,15,15,15,15,15,20,20,20,20,30,30,30,40,40,40,40,40,40,40,40,40,40,40,40,40,40,40,999999,999999]
+var AC2CR = [0,1,2,1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,999999,999999]
+var BAB2CR =[0,1,2,1,2,2,1,2,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,999999,999999]
+var DMG2CR =[0,2,3,2,3,4,4,4,5,4,4,5,4,5,4,4,9,8,9,8,9,9,8,9,9,9,9,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,999999,999999]
+
+function adjustForCR(oldcr, newcr)
+{
+    var hpadj=0;
+    var acadj=0;
+    var babadj=0;
+    var dmgadj=0;
+    var hplen=HP2CR.length-1;
+    var aclen=AC2CR.length-1;
+    var bablen=BAB2CR.length-1;
+    var dmglen=DMG2CR.length-1;
+    oldcr += " ";
+    newcr += " ";
+    if ( oldcr.search("[./]") != -1 ) 
+        oldcr = 0;
+    if ( newcr.search("[./]") != -1 ) 
+        newcr = 0;
+    oldcr = safeParseInt(oldcr);
+    newcr = safeParseInt(newcr);
+    if (oldcr < newcr) {
+        for (c=oldcr; c<newcr; c++) {
+            if (c<hplen) hpadj += HP2CR[c]; else hpadj += HP2CR[hplen];
+            if (c<aclen) acadj += AC2CR[c]; else acadj += AC2CR[aclen];
+            if (c<bablen) babadj += BAB2CR[c]; else babadj += BAB2CR[bablen];
+            if (c<dmglen) dmgadj += DMG2CR[c]; else dmgadj += DMG2CR[dmglen];
+        }
+    } else {
+        for (c=oldcr-1; c>=newcr; c--) {
+            if (c<hplen) hpadj -= HP2CR[c]; else hpadj -= HP2CR[hplen];
+            if (c<aclen) acadj -= AC2CR[c]; else acadj -= AC2CR[aclen];
+            if (c<bablen) babadj -= BAB2CR[c]; else babadj -= BAB2CR[bablen];
+            if (c<dmglen) dmgadj -= DMG2CR[c]; else dmgadj -= DMG2CR[dmglen];
+        }
+    }
+    // alert("OldCR: "+oldcr+"  NewCR: "+newcr+"  HP: "+hpadj+"  AC: "+acadj+"  BAB: "+babadj+"  Dmg: "+dmgadj);
+    HP = safeParseInt(HP) + hpadj;
+    AC = safeParseInt(AC) + acadj;
+    ACBase = safeParseInt(ACBase) + acadj;
+    ACFlatFooted = safeParseInt(ACFlatFooted) + acadj;
+    AC_NatAdv = safeParseInt(AC_NatAdv) + acadj;
+    BaseAtk = safeParseInt(BaseAtk) + babadj;
+    CMB = cmbCmdAdjust(CMB, babadj);
+    CMD = cmbCmdAdjust(CMD, babadj);
+    dmgadj = 0; // remove this as it's supposed to be taken care of in the STR increase
+    Melee = changeAttack( babadj, Melee, 0, dmgadj, true );
+    Ranged = changeAttack( babadj, Ranged, 0, dmgadj, true ); // call this melee so the dmg gets added to attacks
+}
+
+function safeParseInt( val )
+{
+    n = parseInt(val);
+    if ( isNaN(n) ) n=0;
+    return n;
+}
+
+function cmbCmdAdjust( cmdStr, adjustment )
+{
+    var returnString;
+    
+    cmdStr = cmdStr.toString(); // make sure it's not just a number
+    
+    // CMB/CMD can be a number, or a number and some options: 
+    //   "17", "18 (can't be tripped)", "19 (21 vs trip)", "+21 (+25 grapple, +23 sunder)"
+    cmdVal = safeParseInt(cmdStr) + adjustment;
+    returnString = cmdVal;
+    firstSpaceLoc = cmdStr.indexOf(" ");
+    if ((firstSpaceLoc != -1) && (firstSpaceLoc < cmdStr.length - 1))
+    {
+        if (cmdStr.charAt(firstSpaceLoc+1) == "(")
+        {
+            returnString += " (";
+            if (cmdStr.charAt(firstSpaceLoc+2) == "+")
+            {                
+                // multiple options with plus signs
+                plusLoc = firstSpaceLoc+2;
+                do {
+                    extraVal = safeParseInt(cmdStr.substring(plusLoc+1)) + adjustment;
+                    returnString += "+" + extraVal;
+                    spaceLoc = cmdStr.indexOf(" ",plusLoc);
+                    plusLoc = cmdStr.indexOf("+", plusLoc + 1);
+                    if (plusLoc == -1)
+                    {
+                        returnString += cmdStr.substring(spaceLoc);
+                    } else {
+                        returnString += cmdStr.substring(spaceLoc, plusLoc);
+                    }
+                } while (plusLoc != -1);
+            } else {
+                // one options without a plus sign
+                extraVal = safeParseInt(cmdStr.substring(firstSpaceLoc+2));
+                if (extraVal != 0)
+                {
+                    extraVal += adjustment;
+                    returnString += extraVal + " ";
+                    
+                    spaceLoc = cmdStr.indexOf(" ",firstSpaceLoc+2);
+                    if (spaceLoc != -1)
+                    {
+                        returnString += cmdStr.substring(spaceLoc + 1);
+                    } else {
+                        returnString += ")";
+                    }
+                } else {
+                    returnString += cmdStr.substring(firstSpaceLoc+2);
+                }
+            }
+        } else {
+            returnString += cmdStr.substring(firstSpaceLoc)
+        }
+    }
+    return returnString;
+}
+
+function addResistance( type, amount )
+{
+    if ( Resist != "" ) Resist += ", ";
+    Resist += type + " " + amount;
+}
+
+function racialHitDice( amount )
+{
+    Advancement+=" +"+amount+"HD "
+    sizechange = Math.floor(amount/4);
+    fixStatsAtksBySize(sizechange);
+    // for every 4 hd increase, add 1 to highest stat
+    strmod=0
+    dexmod=0
+    conmod=0
+    intmod=0
+    wismod=0
+    chamod=0
+    if ( sizechange > 0 )
+    {
+        modchange = Math.floor(sizechange/2);
+        maxstat =  Math.max(safeParseInt(Str),safeParseInt(Dex),safeParseInt(Con),safeParseInt(Wis),safeParseInt(Int),safeParseInt(Cha));
+        if      ( safeParseInt(Str) == maxstat ) {strmod = modchange; Str = safeParseInt(Str) + sizechange;}
+        else if ( safeParseInt(Dex) == maxstat ) {dexmod = modchange; Dex = safeParseInt(Dex) + sizechange;}
+        else if ( safeParseInt(Con) == maxstat ) {conmod = modchange; Con = safeParseInt(Con) + sizechange;}
+        else if ( safeParseInt(Int) == maxstat ) {intmod = modchange; Int = safeParseInt(Int) + sizechange;}
+        else if ( safeParseInt(Wis) == maxstat ) {wismod = modchange; Wis = safeParseInt(Wis) + sizechange;}
+        else if ( safeParseInt(Cha) == maxstat ) {chamod = modchange; Cha = safeParseInt(Cha) + sizechange;}
+    }
+    fixSkills(strmod, dexmod, intmod, wismod, chamod, sizechange);
+    fixAC(sizechange, dexmod);
+    changeHitDice(amount,0);
+    
+    hdtype = getHDType();
+    avgval = hdtype / 2;
+    if (hdtype < 3) avgval = 1;
+    else if (hdtype < 5) avgval = 2.5;
+    else if (hdtype < 7) avgval = 3.5;
+    else if (hdtype < 9) avgval = 4.5;
+    else if (hdtype < 11) avgval = 5.5;
+    else if (hdtype < 13) avgval = 6.5;
+    else if (hdtype < 21) avgval = 10.5;
+    if ( safeParseInt(Con) > 0 )
+      conhp = amount * Math.floor((safeParseInt(Con)-10)/2);
+    else
+      conhp = 0;
+    addhp = Math.floor(avgval * amount + conhp);
+    HP = safeParseInt(HP) + addhp;
+    crval = safeParseInt(CR);
+    count=0;
+    newcr = crval;
+    while ( count < addhp )
+    {
+        newcr++;
+        count += HP2CR[newcr];
+    }
+    oldcr = CR;
+    CR = newcr - 1;
+    
+    oldHP = HP;
+    adjustForCR(oldcr,CR,false)
+    hpmod = conhp + HP - oldHP;
+    addHpToHD(hpmod)
+    
+    changeSize(sizechange); //maybe should be sizeAdj function
+}
+
+function adjustSize( amount ) {
+    changeSize( amount ); //what does sizeAdj do?
+}
+
+function adjustSpeed( amount ) {
+    landSpeed = parseInt(Speed);
+    if ( isNaN(landSpeed) ) landSpeed = 30;
+    changeSpeed( "land", landSpeed+amount, true, "" );
+}
+
+function addHpToHD( hpmod )
+{
+    if (hpmod != 0 && HD != "")
+    {
+        loc1 = HD.indexOf("+");
+        loc2 = HD.indexOf("-");
+        loc = Math.max(loc1,loc2);
+        sign="";
+        
+        if ( hpmod >= 0 ) sign="+";
+        if ( HD == "" ) HD = "("+sign+hpmod+")";
+        else if ( loc < 0 ) {
+            lastchar = HD.charAt(HD.length-1);
+            if ( lastchar == ")" || lastchar == "]" || lastchar == ";" )
+                HD = HD.substring(0,HD.length-1)+sign+hpmod+lastchar;
+            else
+                HD += sign+hpmod;
+        } else {
+            endloc = HD.substring(loc).search("[ ;)]");
+            if ( endloc < 0 ) 
+                endloc = HD.length-1;
+            else
+                endloc += loc;
+            hpmod = hpmod + safeParseInt(HD.substring(loc,endloc));
+            if ( hpmod >= 0 ) sign="+";
+            if ( hpmod != 0 )
+                HD = HD.substring(0,loc)+sign+hpmod+HD.substring(endloc);
+            else
+                HD = HD.substring(0,loc)+HD.substring(endloc);
+        }
+    }
+}
+var sizeStr = ['Fine','Diminutive','Tiny','Small','Medium','Large','Huge','Gargantuan','Colossal','Titanic']
+var sizeModCMB = [-8,-4,-2,-1,0,1,2,4,8,16]
+var sizeModATK = [+8,+4,+2,+1,0,-1,-2,-4,-8,-16]
+var sizeModFLY = [+8,+6,+4,+2,0,-2,-4,-6,-8,-10]
+var sizeModSTEALTH = [+16,+12,+8,+4,0,-4,-8,-12,-16,-20]
+var sizeModSTR = [0,0,2,6,10,18,26,34,42,50]
+var sizeModDEX = [0,-2,-4,-6,-8,-10,-12,-12,-12,-12]
+var sizeModCON = [0,0,0,0,2,6,10,14,18,22]
+var sizeModNATAC = [0,0,0,0,0,2,5,9,14,20]
+var sizeModSpace = [0.5,1,2.5,5,5,10,15,20,30,40]
+var sizeModReach = [0,0,0,5,5,10,15,20,30,40]
+
+function changeSpeed( type, amount, keepIfBetter, maneuverability )
+{
+    var start=-1;
+    var end=-1;
+    var currSpeed = 0;
+    if ( type=="" || type=="land" ) {
+        // land speed
+        landSpeed = parseInt(Speed);
+        if ( isNaN(landSpeed) ) {
+            // no land speed, just add it
+            Speed = amount+" ft. "+Speed;
+            return;
+        }
+        start=0;
+        end = Speed.indexOf("ft");
+        currSpeed = safeParseInt(Speed.substring(start));
+    } else {
+        start = Speed.indexOf(type);
+        if ( start == -1 ) {
+            // new speed type
+            end = -1;
+        } else {
+            // existing speed type
+            start += type.length + 1;
+            end = Speed.indexOf(" ",start);
+            currSpeed = safeParseInt(Speed.substring(start));
+        }
+    }
+    if ( start == -1) {
+        // new speed type
+        pre = "";
+        if (Speed.length > 0) pre=", ";
+        Speed += pre + type + " " + amount;
+        if (type == "fly" && maneuverability != "") {
+            Speed += " ("+maneuverability+")";
+        }
+        return;
+    } else {
+        // change a current speed
+        if ((keepIfBetter) && (currSpeed > amount))
+            return;
+        if (type == "fly" && maneuverability != "") {
+            mstart = Speed.indexOf("(",end);
+            mend = Speed.indexOf(")",end);
+            if ((mstart != -1) && (mend != -1)) {
+                Speed = Speed.substring(0,mstart+1)+maneuverability+Speed.substring(mend);
+            }
+        }
+        Speed = Speed.substring(0,start)+amount+Speed.substring(end);
+    }
+}
+
+function changeSize( sizeadj )
+{
+    if ( sizeadj == 0 ) return;
+    for (s=0; s<sizeStr.length; s++)
+    {
+        if ( Size == sizeStr[s] ) 
+        {
+            sx = s + sizeadj;
+            if ( sx < 0 ) sx = 0;
+            if ( sx >= sizeStr.length ) sx = sizeStr.length - 1;
+            Size = sizeStr[sx];
+            
+            if ( Space != "" )
+            {
+                spaceval = safeParseInt(Space);
+                if ( spaceval == 2 ) spaceval = 2.5;
+                newspaceval = spaceval + sizeModSpace[sx] - sizeModSpace[s]
+                if ( newspaceval < 1 ) newspacestr = "1/2";
+                else if ( newspaceval > 1 && newspaceval < 5 ) newspacestr="2-1/2"
+                else newspacestr = Math.floor(newspaceval)
+                end = Space.indexOf(" ");
+                Space = newspacestr + Space.substr(end);
+            }
+
+            if ( Reach != "" )
+            {
+                reachval = safeParseInt(Reach);
+                newReachval = reachval + sizeModReach[sx] - sizeModReach[s]
+                if ( newReachval < 0 ) newReachval = 0;
+                end = Reach.indexOf(" ");
+                Reach = newReachval + Reach.substr(end);
+            }
+            return;
+        }
+    }
+}
+
+function sizeAdj( sizeadj, type )
+{
+    sizemod = 0;
+    for (s=0; s<sizeStr.length; s++)
+    {
+        if ( Size == sizeStr[s] ) 
+        {
+            sx = s + sizeadj;
+            if ( sx < 0 ) sx = 0;
+            if ( sx >= sizeStr.length ) sx = sizeStr.length-1;
+            switch (type)
+            {
+                case "CMB":
+                case "CMD": sizemod = sizeModCMB[sx] - sizeModCMB[s]; break;
+                case "AC": // ac and atk change by the same amounts
+                case "ATK": sizemod = sizeModATK[sx] - sizeModATK[s]; break;
+                case "FLY": sizemod = sizeModFLY[sx] - sizeModFLY[s]; break;
+                case "STEALTH": sizemod = sizeModSTEALTH[sx] - sizeModSTEALTH[s]; break;
+                case "STR": sizemod = sizeModSTR[sx] - sizeModSTR[s]; break;
+                case "DEX": sizemod = sizeModDEX[sx] - sizeModDEX[s]; break;
+                case "CON": sizemod = sizeModCON[sx] - sizeModCON[s]; break;
+                case "NATAC": sizemod = sizeModNATAC[sx] - sizeModNATAC[s]; break;
+                default: sizemod = 0;
+            }
+            break;
+        }
+    }
+    return sizemod;
+}
+
+function fixAC( sizemod, dexmod )
+{
+        dexsizemod = Math.floor(sizeAdj( sizemod, "DEX" )/2);
+        natacsizemod = sizeAdj( sizemod, "NATAC" );
+        acsizemod = sizeAdj( sizemod, "AC" );
+        natac = getNatAC();
+        if ( natacsizemod + AC_NatAdv < -natac ) natacsizemod = -natac - AC_NatAdv
+        ACBase = safeParseInt(ACBase) + dexsizemod + natacsizemod + dexmod + acsizemod;
+        ACTouch = safeParseInt(ACTouch) + dexsizemod + dexmod + acsizemod;
+        ACFlatFooted = safeParseInt(ACFlatFooted) + natacsizemod + acsizemod;
+        AC_DexAdv += dexsizemod + dexmod;
+        AC_NatAdv += natacsizemod;
+        AC_SizeAdv += acsizemod;
+}
+
+function getNatAC()
+{
+    natloc = AC_Mods.toUpperCase().indexOf("NATURAL");
+    if ( natloc == -1 ) natAC = 0;
+    else {
+        plusloc = AC_Mods.substring(0,natloc).lastIndexOf("+");
+        natAC = 0;
+        if ( plusloc >= 0 )
+            natAC = safeParseInt(AC_Mods.substring(plusloc,natloc))
+        if ( isNaN(natAC) ) natAC = 0;
+    }
+    return natAC;
+}
+
+function fixStatsAtksBySize( sizeadj )
+{
+    strchange = sizeAdj( sizeadj, "STR" );
+    dexchange = sizeAdj( sizeadj, "DEX" );
+    conchange = sizeAdj( sizeadj, "CON" );
+    if (( Str != "" ) && ( Str != "-" )) Str = safeParseInt(Str) + strchange;
+    if (( Dex != "" ) && ( Dex != "-" )) Dex = safeParseInt(Dex) + dexchange;
+    if (( Con != "" ) && ( Con != "-" )) Con = safeParseInt(Con) + conchange;
+    if ( Fort != "" ) 
+    { 
+        Fort = safeParseInt(Fort) + Math.floor(conchange/2); 
+        if ( Fort >= 0 ) Fort = "+"+Fort; 
+    }
+    if ( Ref  != "" ) 
+    { 
+        Ref = safeParseInt(Ref) + Math.floor(dexchange/2); 
+        if ( Ref >= 0 ) Ref = "+"+Ref; 
+    }
+    if ( Init != "" )              
+    {
+        Init=safeParseInt(Init)+Math.floor(dexchange/2);
+        if ( safeParseInt(Init) >= 0 ) Init = "+"+Init;
+    }
+    fixAttacks( Math.floor(strchange/2), Math.floor(dexchange/2), sizeadj );
+}
+
+function fixCMB( stradj, sizeadj )
+{
+    var sizemod = 0;
+    if (( CMB != "" ) && ( sizeadj != 0 ))
+    {
+        sizemod = sizeAdj(sizeadj, "CMB");
+    }
+    if ( CMB != "" ) CMB = cmbCmdAdjust(CMB, stradj + sizemod);
+}
+
+function fixCMD( stradj, dexadj, sizeadj )
+{
+    var sizemod = 0;
+    if (( CMD != "" ) && ( sizeadj != 0 ))
+    {
+        sizemod = sizeAdj(sizeadj, "CMD");
+    }
+    if ( CMD != "" ) CMD = cmbCmdAdjust(CMD,stradj + dexadj + sizemod);
+}
+
+function fixCR( amt )
+{
+    if ( isEmpty(CR) ) return;
+    CR += "" // make sure its a string
+    slash = CR.indexOf("/");
+    if ( slash > 0 )
+    {
+        n = safeParseInt(CR.substring(0,slash));
+        d = safeParseInt(CR.substring(slash+1));
+        if (d==0) d=1;
+        crval = n / d;
+    } else
+        crval = safeParseInt(CR);
+    if ( amt > 0 )
+    {
+        for (i=0; i<amt; i++)
+        {
+            if ( crval >= 1 ) crval += 1;
+            else if ( crval < .126 ) crval = .167; // 1/8 -> 1/6
+            else if ( crval < .170 ) crval = .250; // 1/6 -> 1/4
+            else if ( crval < .260 ) crval = .333; // 1/4 -> 1/3
+            else if ( crval < .334 ) crval = .500; // 1/3 -> 1/2
+            else crval = 1;
+        }
+    } else {
+        for (i=0; i<Math.abs(amt); i++)
+        {
+            if ( crval >= 2 ) crval -= 1;
+            else if ( crval > .999 ) crval = .500; // 1 -> 1/2
+            else if ( crval > .499 ) crval = .333; // 1/2 -> 1/3
+            else if ( crval > .332 ) crval = .250; // 1/3 -> 1/4
+            else if ( crval > .249 ) crval = .167; // 1/4 -> 1/6
+            else if ( crval > .165 ) crval = .125; // 1/6 -> 1/8
+        }
+    }
+    if ( crval >= 1 ) CR = crval;
+    else if ( crval < .126 ) CR = "1/8"; 
+    else if ( crval < .170 ) CR = "1/6";
+    else if ( crval < .260 ) CR = "1/4";
+    else if ( crval < .334 ) CR = "1/3";
+    else CR = "1/2";
+}
+
+// adjust the number in a sting as   str=".... X3 itemStr... where X= + or -;
+function changeAPreValue(mod, itemStr, str, addIfNotThere)
+{
+    found = 0;
+    if ( mod != 0 )
+    {
+        itemloc = 0;
+        startnumloc = 0;
+        do 
+        {
+            itemloc = str.substring(itemloc).toUpperCase().search(" "+itemStr.toUpperCase());
+            if ( itemloc >= 2 )
+            {   
+                found++;
+                signloc1=str.substring(0,itemloc).lastIndexOf("+");
+                signloc2=str.substring(0,itemloc).lastIndexOf("-");
+                signloc = Math.max(signloc1,signloc2);
+                if ( signloc >= 0 )
+                {
+                    endnumloc=itemloc;
+                    value = safeParseInt(str.substring(signloc,endnumloc)) + mod;
+                    if ( value < 0 ) sign="";
+                    else if ( value > 0 ) sign="+";
+                    str = str.substring(0,signloc) + sign + value + str.substring(endnumloc);
+                }
+            }
+        } while (itemloc >= 2)
+        if ( addIfNotThere && found==0 )
+        {
+            if ( mod < 0 ) sign="";
+                else sign="+";
+            toadd = ", "+sign+mod+" "+itemStr;
+            lastchar = str.charAt(str.length - 1);
+            if (lastchar == ")" || lastchar == "]" || lastchar == ";")
+                str = str.substring(0,str.length-1)+toadd+lastchar;
+            else
+                str += toadd;
+        }   
+    }
+
+    return str;
+}
+
+function changeASkill( mod, SkillString, str, sizeadj )
+{
+    var skillloc;
+    var signloc;
+    var endnumloc;
+    var value;
+    
+    if ( mod != 0 )
+    {
+        for (i=0; i<SkillString.length; i++)
+        {
+            skillloc = 0;
+            endnumloc = 0;
+            do 
+            {
+                skillloc = str.substring(endnumloc).search(SkillString[i]);
+                sizemod = 0;
+                if ( SkillString[i].toUpperCase() == "FLY" ) sizemod = sizeAdj( sizeadj, "FLY");
+                if ( SkillString[i].toUpperCase() == "STEALTH" ) sizemod = sizeAdj( sizeadj, "STEALTH");
+                if ( skillloc >= 0 )
+                {   
+                    signloc=str.substring(skillloc+endnumloc).search("[+-]")+skillloc+endnumloc;
+                    endnumloc=str.substring(signloc).search("[,]");
+                    if ( endnumloc < 0 ) endnumloc = str.length;
+                    else endnumloc += signloc
+                    value = safeParseInt(str.substring(signloc,endnumloc)) + mod + sizemod;
+                    if ( value < 0 ) sign="";
+                    else sign="+";
+                    str = str.substring(0,signloc) + sign + value + str.substring(endnumloc);
+                }
+            } while (skillloc >= 0)
+        }
+    }
+    return str;
+}
+
+function fixSkills( strmod, dexmod, intmod, wismod, chamod, sizeadj )
+{
+    // search for the various skills
+    Skills = changeASkill( strmod, StrSkills, Skills, sizeadj );
+    Skills = changeASkill( dexmod, DexSkills, Skills, sizeadj );
+    Skills = changeASkill( intmod, IntSkills, Skills, sizeadj );
+    Skills = changeASkill( wismod, WisSkills, Skills, sizeadj );
+    Skills = changeASkill( chamod, ChaSkills, Skills, sizeadj );
+    
+    Senses = changeASkill( strmod, StrSkills, Senses, sizeadj );
+    Senses = changeASkill( dexmod, DexSkills, Senses, sizeadj );
+    Senses = changeASkill( intmod, IntSkills, Senses, sizeadj );
+    Senses = changeASkill( wismod, WisSkills, Senses, sizeadj );
+    Senses = changeASkill( chamod, ChaSkills, Senses, sizeadj );
+}
+
+function changeDC( mod, str )
+{
+    var dcloc;
+    var startloc;
+    var endnumloc;
+    var value;
+    
+    if ( mod != 0 )
+    {
+        dcloc = 0;
+        endnumloc = 0;
+        do 
+        {
+            dcloc = str.substring(endnumloc).search("DC ");
+            if ( dcloc >= 0 )
+            {   
+                startloc=dcloc+endnumloc+3;
+                endnumloc=str.substring(startloc).search("[, );]");
+                if ( endnumloc < 0 ) endnumloc = str.length;
+                else endnumloc += startloc
+                value = safeParseInt(str.substring(startloc,endnumloc)) + mod;
+                if ( !isNaN(value) )
+                    str = str.substring(0,startloc) + value + str.substring(endnumloc);
+            }
+        } while (dcloc >= 0)
+    }
+    return str;
+}
+
+function fixDC( mod )
+{
+    SpecialAbilities = changeDC( mod, SpecialAbilities );
+    SpecialAttacks = changeDC( mod, SpecialAttacks );
+    SpellLikeAbilities = changeDC( mod, SpellLikeAbilities );
+    Melee = changeDC( mod, Melee );
+    Ramged = changeDC( mod, Ranged );
+    SpellsPrepared = changeDC( mod, SpellsPrepared );
+    SpellsKnown = changeDC( mod, SpellsKnown );
+    Reach = changeDC( mod, Reach );
+    Aura = changeDC( mod, Aura );
+}
+
+var NaturalAttackTypes = ["bite","claw","gore","hoof","tentacle","wing","pincers","tail","slam","sting","talons","other"];
+var NaturalAttackPrimary = ["p","p","p","s","s","s","s","s","p","p","p","s"];
+var NaturalAttackDmg = [ ["1","1d2","1d3","1d4","1d6","1d8","2d6","2d8","4d6"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["1","1d2","1d3","1d4","1d6","1d8","2d6","2d8","4d6"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["1","1d2","1d3","1d4","1d6","1d8","2d6","2d8","4d6"],
+                         ["1","1d2","1d3","1d4","1d6","1d8","2d6","2d8","4d6"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"],
+                         ["-","1","1d2","1d3","1d4","1d6","1d8","2d6","2d8"]];
+                         
+function addNaturalAttack( num, type )
+{
+    var i;
+    var s;
+    
+    type = type.toLowerCase();
+    if ( Melee.indexOf(type) != -1 ) return;
+    
+    for (i=0; i<NaturalAttackTypes.length-1; i++) {
+        if ( NaturalAttackTypes[i] == type )
+            break;
+    }
+    for (s=0; s<sizeStr.length; s++) {
+        if ( Size == sizeStr[s] )
+            break;
+    }
+    if ( s == sizeStr.length ) s=4;
+    
+    
+    strMod = Math.floor((safeParseInt(Str)-10)/2);
+    atk = safeParseInt(BaseAtk) + strMod + sizeModATK[s];
+    dmg = NaturalAttackDmg[i][s];
+    sign = "";
+    if ( strMod >= 0 ) sign = "+";
+    if ( NaturalAttackPrimary[i] == "p" ) {
+        dmgMod = sign + strMod;
+    } else {
+        dmgMod = sign + Math.floor(strMod/2);
+        atk -= 5;
+    }
+    if ( strMod == 0 ) dmgMod = "";
+    if ( atk >=0 ) atk = "+"+atk;
+    
+    if ( Melee.length > 0 ) Melee += ", ";
+    if ( num > 1 ) Melee += num + " ";
+    Melee += type + " " + atk + " ("+ dmg + dmgMod +")";
+}
+
+function changeAttack( mod, atk, sizeadj, dmgmod, isMelee )
+{
+    // the "mod" should include changes due to size to the modifier, the sizeadj only adjusts the atk and dmg dice by that change
+    var plusloc;
+    var parenloc;
+    var endparenloc
+    var startloc;
+    var endnumloc;
+    var value;
+    var s = atk;
+    var locadjust = 0;
+    
+    var dicetype = ['1', '1d2', '1d3', '1d4', '1d6', '1d8', '2d6', '2d8', '4d6', '6d6', '8d6', '12d6'];
+    var dicenum = dicetype.length;
+    
+    var sizemod = sizeAdj( sizeadj, "ATK" );
+    
+    // do 1.5x damage if only one melee attack.  Guess at if there is only one attack cause I'm lazy
+    if ( isMelee && s.length < 26) 
+    {
+        dmgmod = Math.round(dmgmod * 1.5);
+    }
+    
+    if ( atk == "" ) return atk;
+    if ( mod != 0 ) 
+    {
+        plusloc = 0;
+        parenloc = 0;
+        endnumloc = 2;
+        do 
+        {
+            plusloc = s.substring(endnumloc).search("[+-]");
+            parenloc = s.substring(endnumloc).search("[(]");
+            isSwarm = false;
+            swarmloc = s.substring(endnumloc-2).search("swarm");
+            if ((swarmloc >= 0) && (swarmloc <= 4)) isSwarm = true;
+            if ((( plusloc >= 0 ) && ( plusloc < parenloc )) || isSwarm)
+            {   
+                if (isSwarm)
+                {
+                    parenloc += endnumloc;
+                    endparenloc = s.substring(parenloc).search("[)]") + parenloc;
+                    // attack
+                    startloc=swarmloc + endnumloc - 2 + 5;
+                    endnumloc=startloc;
+                } else {                
+                    parenloc += endnumloc;
+                    endparenloc = s.substring(parenloc).search("[)]") + parenloc;
+                    // attack
+                    startloc=plusloc+endnumloc;
+                    endnumloc=s.substring(startloc).search("[, ;/]");
+                    if ( endnumloc < 0 ) endnumloc = s.length;
+                    else endnumloc += startloc;
+                    value = safeParseInt(s.substring(startloc,endnumloc)) + mod + sizemod;
+                    if ( value < 0 ) sign="";
+                    else sign="+";
+                    atk = atk.substring(0,startloc+locadjust) + sign + value + s.substring(endnumloc);
+                    locadjust += (sign+value).length - (endnumloc - startloc);
+                }
+                // multiple attacks
+                while (s.substr(endnumloc,1) == "/")
+                {
+                    plusloc = s.substring(endnumloc).search("[+-]");
+                    if (( plusloc >= 0 ) && ( plusloc < parenloc ))
+                    {
+                        startloc=plusloc+endnumloc;
+                        endnumloc=s.substring(startloc).search("[, ;/]");
+                        if ( endnumloc < 0 ) endnumloc = s.length;
+                        else endnumloc += startloc
+                        value = safeParseInt(s.substring(startloc,endnumloc)) + mod + sizemod;
+                        if ( value < 0 ) sign="";
+                        else sign="+";
+                        atk = atk.substring(0,startloc+locadjust) + sign + value + s.substring(endnumloc);
+                        locadjust += (sign+value).length - (endnumloc - startloc);
+                    }
+                }
+
+                // damage
+                if ( sizeadj != 0 )
+                {
+                    diceloc=s.substring(parenloc).search("[d]");
+                    if ( diceloc >= 0 ) 
+                    {
+                        startloc = diceloc + parenloc - 1;
+                        endnumloc= startloc + 3;
+                        dice = s.substring(startloc,endnumloc);
+                        for (d=0; d<dicenum; d++)
+                        {
+                            if (dice == dicetype[d])
+                            {
+                                dx = d + sizeadj;
+                                if (dx < 0) dx=0;
+                                if (dx > dicenum) dx = dicenum-1;
+                                if ( dx != d ) {
+                                    atk = atk.substring(0,startloc+locadjust) + dicetype[dx] + s.substring(endnumloc);
+                                    locadjust += dicetype[dx].length - (endnumloc - startloc);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                plusloc=s.substring(parenloc).search("[+-/]");
+                if ( isMelee ) // only add damage bonus to melee attacks normally
+                {
+                    if (( plusloc >= 0 ) && ( s.substr(parenloc+plusloc,1) != "/" ))
+                    {
+                        startloc = plusloc + parenloc;
+                        endnumloc=s.substring(startloc).search("[, ;/)]");
+                        if ( endnumloc < 0 ) endnumloc = s.length;
+                        else endnumloc += startloc
+                        value = safeParseInt(s.substring(startloc,endnumloc)) + dmgmod;
+                        if ( value < 0 ) sign="";
+                        else sign="+";
+                        if (value == 0) {
+                            sign = "";
+                            value = "";
+                        }
+                        atk = atk.substring(0,startloc+locadjust) + sign + value + s.substring(endnumloc);
+                        locadjust += (sign+value).length - (endnumloc - startloc);
+                        temploc = s.substring(endnumloc).search("[)]");
+                        if (temploc >= 0) endnumloc += temploc + 4 ;
+                        else 
+                        {
+                            endnumloc = -1;
+                            plusloc = -1;
+                        }
+                    } else if ((dmgmod != 0) && !isSwarm) {
+                        endofdmgdice = s.substring(parenloc).search("[/)]")+parenloc;
+                        if ( dmgmod < 0 ) sign="";
+                        else sign="+"; 
+                        atk = atk.substring(0,endofdmgdice+locadjust) + sign + dmgmod + s.substring(endofdmgdice);
+                        locadjust += (sign+value).length;
+                        temploc = s.substring(endnumloc).search("[)]");
+                        if (temploc >= 0) endnumloc += temploc + 4 ;
+                        else 
+                        {
+                            endnumloc = -1;
+                            plusloc = -1;
+                        }
+                    } else {
+                        plusloc = -1;
+                    }
+                }
+                endnumloc = endofdmgdice = s.substring(parenloc).search("[)]")+parenloc;
+            } else if ( plusloc != 0 ) {
+                endnumloc += 1 + plusloc;
+            }
+        } while (plusloc >= 0)
+    }
+//  alert(s+"\n\n"+atk);
+    return atk;
+}
+
+function fixAttacks( strmod, dexmod, sizeadj )
+{
+    // the "mod" should include changes due to size to the modifier, the sizeadj only adjusts the atk and dmg dice by that change
+    Melee = changeAttack( strmod, Melee, sizeadj, strmod, true );
+    Ranged = changeAttack( dexmod, Ranged, sizeadj, strmod, false );
+}
+
+function cleanAdvanced( item )
+{
+    if ( item != 1) document.form.Advanced.checked=false;
+    if ( item != 2) document.form.Advanced2.checked=false;
+    if ( item != 3) document.form.Advanced3.checked=false;
+    if ( item != 4) document.form.Advanced4.checked=false;
+}                        
+
+function cleanYoung( item )
+{
+    if ( item != 1) document.form.Young.checked=false;
+    if ( item != 2) document.form.Young2.checked=false;
+    if ( item != 3) document.form.Young3.checked=false;
+    if ( item != 4) document.form.Young4.checked=false;
+    if ( item != 0) cleanGiant(0);
+}       
+
+function cleanGiant( item )
+{
+    if ( item != 1) document.form.Giant.checked=false;
+    if ( item != 2) document.form.Giant2.checked=false;
+    if ( item != 3) document.form.Giant3.checked=false;
+    if ( item != 4) document.form.Giant4.checked=false;
+    if ( item != 0) cleanYoung(0);
+}       
+
+function cleanFeindish( item )
+{
+    if ( item != 1) document.form.Fiendish.checked=false;
+    if ( item != 2) document.form.Celestial.checked=false;
+}
+
+function adjustRHD( amount )
+{ 
+    rhd = safeParseInt(document.form.RacialHitDice.value) + amount;
+    if ( rhd < 0 ) rhd = -1;
+    if ( rhd > 30 ) rhd = 30;
+    document.form.RacialHitDice.value = rhd;
+}
+
+function adjustSIZE( amount )
+{ 
+    adjsize = safeParseInt(document.form.AdjustSize.value) + amount;
+    if ( adjsize < -8 ) adjsize = -8;
+    if ( adjsize > 8 ) adjsize = 8;
+    document.form.AdjustSize.value = adjsize;
+}
+
+function adjustSPD( amount ) { 
+    adjspd = safeParseInt(document.form.AdjustSpeed.value) + amount;
+    if ( adjspd < -50 ) adjspd = -50;
+    if ( adjspd > 100 ) adjspd = 100;
+    document.form.AdjustSpeed.value = adjspd;
+}
+
+// I haven't quite figured this one out yet, I need to figure out how to swap out AdjustSpeed with a var
+function adjustStat( amount, min, max, stat ) {
+	if (DEBUG) console.log("stat adjust = " + amount);
+    newval = safeParseInt(document.form.AdjustSpeed.value) + amount;
+    if ( newval < min ) newval = min;
+    if ( newval > max ) newval = max;
+    document.form.AdjustSpeed.value = newval;
+}
+
+function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+////////////////// SKELETON ////////////////////////////
+
+function skeleton (variant) {
+    variant = variant || ""
+    Advancement+="Skeleton ";
+    Advancement+=variant;
+    
+//Change CR
+    var oldTW = [0.5,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    var newCR = ["1/6","1/3",1,1,2,2,3,3,4,4,5,5,6,6,6,7,7,7,8,8,8];
+    var newXP = [65,135,400,400,600,600,800,800,1200,1200,1600,1600,2400,2400,2400,3200,3200,3200,4800,4800,4800];
+
+    var i = oldTW.indexOf(HitDice);
+    CR = newCR[i];
+    if (variant != "") { 
+        if (isNumeric(CR)) {CR += 1;}
+        else {CR = 1;}
+    }
+    XP = newXP[i];
+//Alignment & Type  
+    Alignment = "NE";
+    Type = "undead";
+//Filter some subtypes (Kill-> Chaos, Good, Angel....)(Maintain -> Aquatic, Water, Earth....)
+    var regexp = new RegExp(/(adlet|aeon|agathion|angel|archon|asura|augmented|azata|behemoth|catfolk|chaotic|clockwork|daemon|dark folk|demodand|demon|devil|div|dwarf|elf|extraplanar|evil|elemantal|giant|gnome|goblinoid|good|halfling|human|incorporeal|inevitable|kami|kyton|lawful|leshy|nightshade|oni|orc|protean|qlippoth|rakshasa|ratfolk|reptilian|sasquatch|shapechanger|vanara|vishkanya)/g);//Flüche
+    SubType = SubType.replace(regexp,"");
+
+//Attributes
+    Dex=safeParseInt(Dex)+2;
+    Wis = 10;
+    old_Cha = Cha; //need to fix SLA DC
+    if (variant == "Bloody") { Cha = 14; }
+    else if (variant == "Burning") { Cha = 12; }
+    else { Cha = 10; }
+    Con = "-";
+    Int = "-";
+    var ChaMod = Math.floor((safeParseInt(Cha)-10)/2);
+    var DexMod = Math.floor((safeParseInt(Dex)-10)/2);
+    var WisMod = Math.floor((safeParseInt(Wis)-10)/2);
+
+//Nat AC Bonus is set to (see skeleton template)
+    var i = sizeStr.indexOf(Size);
+
+    var Nat_AC_before = -1 * FindArmorValue("natural", AC_Mods, true);
+    if(i <= 2) {AC_NatAdv = 0 + Nat_AC_before;}
+    else if(i == 3) {AC_NatAdv = 1 + Nat_AC_before;}
+    else if(i == 4||i == 5) {AC_NatAdv = 2 + Nat_AC_before;}
+    else if(i == 6) {AC_NatAdv = 3 + Nat_AC_before;}
+    else if(i == 7) {AC_NatAdv = 6 + Nat_AC_before;}
+    else if(i == 8) {AC_NatAdv = 10 + Nat_AC_before;}
+    else {AC_NatAdv = 0 + Nat_AC_before;}
+    
+    ACBase = safeParseInt(ACBase) + AC_NatAdv;
+    ACFlatFooted = safeParseInt(ACFlatFooted) + AC_NatAdv;
+    
+//No special Attacks
+    SpecialAttacks = "";
+    if (variant == "Burning") {SpecialAttacks = "Fiery Aura (Ex): Creatures adjacent to a burning skeleton take 1d6 points of fire damage at the start of their turn. Anyone striking a burning skeleton with an unarmed strike or natural attack takes 1d6 points of fire damage.";}
+    
+//Fix DC of Spell Like Abilities
+    changeDC( Math.floor((safeParseInt(old_Cha - Cha)-10)/2), SpellLikeAbilities );
+    
+//Defense    
+    if (variant == "Burning") { 
+        Immune = "Fire"; 
+        if (Weaknesses.length > 0) {Weaknesses += ", ";}
+        Weaknesses += "Cold";
+    }
+    else { Immune = "Cold, like undead"; }
+    Resist = "";
+    SR = "";
+    DR = "5/bludgeoning";    
+    
+//No Skills
+    Skills = "";
+    RacialMods = "";
+    
+//Only Bonus Feat
+    Feats = "Improved InitiativeB";
+    Init = Math.floor((safeParseInt(Dex)-10)/2)+4;
+    
+//all undead get Darkvision
+    Senses = "darkvision 60 ft.; Perception "+addplus(WisMod);
+    
+//no flight
+    var regexp = new RegExp(/Fly.*(,|$)/g);
+    Speed = Speed.replace(regexp,"");
+
+//How many TW
+    HDamount = getHDamount();
+
+//Kill Class Level
+    if(Class != "") 
+    {
+        var ClassLevel = 0;
+
+        var result = Class.split('/');
+        for(var i=0;i<result.length;i++)
+            {
+            ClassLevel += parseInt(result[i].match(/\d+/g));
+            }
+    HDamount = HDamount - ClassLevel;
+    if(HDamount <= 0) HDamount = 1;
+    addNaturalAttack(1, "claw");
+    Class = "";
+    }
+
+//Kill SpellsKnown, SpellsPrepared, SpellDomains
+    SpellsKnown = "";
+    SpellsPrepared = "";
+    SpellDomains = "";
+    
+//New Saves
+    Fort = Math.floor(HDamount/3) + ChaMod;
+    Ref = Math.floor(HDamount/3) + DexMod;
+    Will = Math.floor(HDamount/2) + WisMod;
+
+//New BaseAttack
+    BaseAtk = Math.floor(HDamount/4*3);
+
+//Change HitDice to d8
+//Hitpoints (xd8+0)
+    var chabonus = HDamount * ChaMod;
+    HP = Math.floor(HDamount * 4.5 + chabonus);
+    HD = "("+HDamount+"d8+"+chabonus+")";
+    var n = HP_Mods.search(/fast healing/);
+    if ((variant == "Bloody") && (n < 0)) { 
+        if (HP_Mods.length > 0) { HP_Mods += "; "; }
+        var fastHealAmount = Math.floor(HDamount/2)+1;
+        if (fastHealAmount < 1) { fastHealAmount = 1; }
+        HP_Mods += "fast healing " + fastHealAmount;
+    }
+    
+//Fix Attacks (feat bonus...)
+    if(Melee != "") {Melee = changeAttackSkeleton (Str,Melee,"true");}
+    if(Ranged != "") {Ranged = changeAttackSkeleton (Dex,Ranged,"false");}
+    if (variant == "Burning") {
+        Melee += " All attacks deal additional 1d6 fire";
+    }
+//Kill all SpecialAbilities or Kill-All execpt Ex?
+
+    SpecialAbilities = "";  //
+    if (variant == "Bloody") {SpecialAbilities = "Deathless (Su): A bloody skeleton is destroyed when reduced to 0 hit points, but it returns to unlife 1 hour later at 1 hit point, allowing its fast healing thereafter to resume healing it. A bloody skeleton can be permanently destroyed if it is destroyed by positive energy, if it is reduced to 0 hit points in the area of a bless or hallow spell, or if its remains are sprinkled with a vial of holy water.";}
+    else if (variant == "Burning") {SpecialAbilities = "Fiery Death (Su): A burning skeleton explodes into a burst of flame when it dies. Anyone adjacent to the skeleton when it is destroyed takes 1d6 points of fire damage per 2 Hit Dice the skeleton possessed (minimum 1d6). A Reflex save (DC = 10 + 1/2 the skeleton's Hit Dice + the skeleton's Cha bonus) halves this damage.";}
+    
+//Defensive abilities
+    if (variant == "Bloody") {
+        if (DefensiveAbilities.length > 0) {DefensiveAbilities += ", ";}
+        DefensiveAbilities += "channel resistance +4"; 
+    } 
+    
+//+2 dex chnaging -> AC, CMD
+    stradj = strmod = 0; dexadj = dexmod = 1; sizeadj = 0;
+    fixAttacks( strmod, dexmod, sizeadj );
+    fixCMB( stradj, sizeadj );
+    fixCMD( stradj, dexadj, sizeadj );
+    fixAC(0,dexmod);
+
+    
+//End of function
+}
+
+function changeAttackSkeleton (attribut, atk, isMelee) {
+    //Melee is GAB + STR + Size (no feats)
+    //Range is GAB + DEX + Size (no feats)
+    var plusloc;
+    var parenloc;
+    var endparenloc
+    var startloc;
+    var endnumloc;
+    var value;
+    
+    var i = sizeStr.indexOf(Size);
+    var sizeadj = sizeModATK[i];
+    
+    var s = atk;
+    var locadjust = 0;
+    var dmgmod = 0;
+    var mod = Math.floor((safeParseInt(attribut)-10)/2);
+    
+    var sizemod = sizeModATK[i];
+        
+        plusloc = 0;
+        parenloc = 0;
+        endnumloc = 2;
+        do 
+        {
+            plusloc = s.substring(endnumloc).search("[+-]");
+            parenloc = s.substring(endnumloc).search("[(]");
+            if (( plusloc >= 0 ) && ( plusloc < parenloc ))
+            {   
+                parenloc += endnumloc;
+                endparenloc = s.substring(parenloc).search("[)]") + parenloc;
+                // attack
+                startloc=plusloc+endnumloc;
+                endnumloc=s.substring(startloc).search("[, ;/]");
+                if ( endnumloc < 0 ) endnumloc = s.length;
+                else endnumloc += startloc
+                value = mod+BaseAtk+sizeadj;
+                if ( value < 0 ) sign="";
+                else sign="+";
+                atk = atk.substring(0,startloc+locadjust) + sign + value + s.substring(endnumloc);
+                locadjust += (sign+value).length - (endnumloc - startloc);
+                
+                // multiple attacks
+                while (s.substr(endnumloc,1) == "/")
+                {
+                    plusloc = s.substring(endnumloc).search("[+-]");
+                    if (( plusloc >= 0 ) && ( plusloc < parenloc ))
+                    {
+                        startloc=plusloc+endnumloc;
+                        endnumloc=s.substring(startloc).search("[, ;/]");
+                        if ( endnumloc < 0 ) endnumloc = s.length;
+                        else endnumloc += startloc
+                        value = mod+BaseAtk+sizeadj;
+                        if ( value < 0 ) sign="";
+                        else sign="+";
+                        atk = atk.substring(0,startloc+locadjust) + sign + value + s.substring(endnumloc);
+                        locadjust += (sign+value).length - (endnumloc - startloc);
+                    }
+                }
+
+                endnumloc = endofdmgdice = s.substring(parenloc).search("[)]")+parenloc;
+            }
+        } while (plusloc >= 0)
+    return atk;
+}
+
+//How many TW ??
+function getHDamount()
+{
+  var hdamount = 0;
+  if ( HD != "" ) 
+  {
+    end = HD.search( "[d]" );
+    start = HD.search( "[(]" );
+    if ( (end > start) && (start >= 0) )
+    {
+        hdamount = safeParseInt(HD.substring(start+1,end));
+        if ( hdamount < 1 ) hdamount = 1;
+        if ( isNaN(hdamount) ) hdamount = 1;
+    }
+  }
+  return hdamount;
+}
+
+//Find Armor Value
+function FindArmorValue(itemStr, str, addIfNotThere)
+{
+    var found = 0;
+
+        itemloc = 0;
+        startnumloc = 0;
+        do 
+        {
+            itemloc = str.substring(itemloc).toUpperCase().search(" "+itemStr.toUpperCase());
+            if ( itemloc >= 2 )
+            {   
+                found++;
+                signloc1=str.substring(0,itemloc).lastIndexOf("+");
+                signloc2=str.substring(0,itemloc).lastIndexOf("-");
+                signloc = Math.max(signloc1,signloc2);
+                if ( signloc >= 0 )
+                {
+                    endnumloc=itemloc;
+                    value = safeParseInt(str.substring(signloc,endnumloc));
+                    if (typeof value === "undefined") {value = 0;}
+
+                }
+            }
+        } while (itemloc >= 2)
+        if ( addIfNotThere && found==0 )
+        {
+               sign="+";
+            toadd = ", "+sign+"0 "+itemStr;
+            lastchar = str.charAt(str.length - 1);
+            if (lastchar == ")" || lastchar == "]" || lastchar == ";")
+                str = str.substring(0,str.length-1)+toadd+lastchar;
+            else
+                str += toadd; value = 0;
+        }   
+
+    return value;
+}
+  
+function zombie (variant) {
+    variant = variant || "";
+    Advancement+="Zombie ";
+    Advancement+=variant;
+
+    if (variant == "Fast") {
+        landSpeed = safeParseInt(Speed);
+        if (landSpeed > 0) { 
+            landSpeed += 10; 
+            speedEnd = Speed.indexOf(" ");
+            Speed = landSpeed + Speed.substring(speedEnd, Speed.length);
+        }
+    }
+    
+//Change CR
+    var oldTW = [0.5,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28];
+    var newCR = ["1/8","1/4","1/2",1,1,2,2,3,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9];
+    var newXP = [50,100,200,400,400,600,600,800,800,1200,1200,1600,1600,2400,2400,2400,2400,3200,3200,3200,3200,4800,4800,4800,4800,6400,6400,6400,6400];
+    
+    var i = oldTW.indexOf(HitDice);
+    CR = newCR[i];
+    XP = newXP[i];
+
+//Alignment & Type  
+    Alignment = "NE";
+    Type = "Undead";
+    
+//Filter some subtypes (Kill-> Chaos, Good, Angel....)(Maintain -> Aquatic, Water, Earth....)
+    var regexp = new RegExp(/(Good|Evil|Neutral|Chaotic)/g);
+    SubType = SubType.replace(regexp,"");
+    
+//Attributes
+    Str=safeParseInt(Str)+2;
+    if (variant == "Fast") {Dex=safeParseInt(Dex)+2;}
+    else {Dex=safeParseInt(Dex)-2;}
+    Wis = 10;
+    old_Cha = Cha; //need to fix SLA DC
+    Cha = 10;
+    Con = "-";
+    Int = "-";
+    var ChaMod = Math.floor((safeParseInt(Cha)-10)/2);
+    var DexMod = Math.floor((safeParseInt(Dex)-10)/2);
+    var WisMod = Math.floor((safeParseInt(Wis)-10)/2);
+
+//Nat AC Bonus is set to (see skeleton template)
+    var i = sizeStr.indexOf(Size);
+
+    var Nat_AC_before = -1 * FindArmorValue("natural", AC_Mods, true);
+    if(i <= 2) {AC_NatAdv = 0 + Nat_AC_before;}
+    else if(i == 3) {AC_NatAdv = 1 + Nat_AC_before;}
+    else if(i == 4) {AC_NatAdv = 2 + Nat_AC_before;}
+    else if(i == 5) {AC_NatAdv = 3 + Nat_AC_before;}
+    else if(i == 6) {AC_NatAdv = 4 + Nat_AC_before;}
+    else if(i == 7) {AC_NatAdv = 7 + Nat_AC_before;}
+    else if(i == 8) {AC_NatAdv = 11 + Nat_AC_before;}
+    else {AC_NatAdv = 0 + Nat_AC_before;}
+    
+    ACBase = safeParseInt(ACBase) + AC_NatAdv;
+    ACFlatFooted = safeParseInt(ACFlatFooted) + AC_NatAdv;
+
+//No special Attacks
+    SpecialAttacks = "";
+    if (variant == "Fast") {
+        SpecialAttacks = "Quick Strikes (Ex): Whenever a fast zombie takes a full-attack action, it can make one additional slam attack at its highest base attack bonus.";
+    }
+    else if (variant == "Plague") {
+        SpecialAttacks = "Death Burst (Ex): When a plague zombie dies, it explodes in a burst of decay. All creatures adjacent to the plague zombie are exposed to its plague as if struck by a slam attack and must make a Fortitude save or contract zombie rot.  Disease (Su): The slam attack-as well as any other natural attacks-of a plague zombie carries the zombie rot disease.  Zombie rot: slam; save Fort DC = 10 + 1/2 the zombie's Hit Dice + the zombie's Cha modifier; onset 1d4 days; frequency 1/day; effect 1d2 Con, this damage cannot be healed while the creature is infected; cure 2 consecutive saves. Anyone who dies while infected rises as a plague zombie in 2d6 hours.";
+    }
+
+//Fix DC of Spell Like Abilities
+    changeDC( Math.floor((safeParseInt(old_Cha - Cha)-10)/2), SpellLikeAbilities );
+    
+//Defense
+    Immune = "undead traits";
+    Resist = "";
+    SR = "";
+    var n = SubType.search(/swarm/);
+    if(n < 0) {
+        if (variant == "") {DR = "5/slashing";}
+    }
+    else {
+        DR = ""; 
+        var i = sizeStr.indexOf(Size);
+            if(i == 0 || i == 1) Immune += ", weapon damage";
+            if(i == 2) DefensiveAbilities += ", half damage from slashing and piercing weapons";
+        }
+
+//No Skills
+    Skills = "";
+    RacialMods = "";
+
+//Only Bonus Feat
+    Feats = "ToughnessB";
+
+//all undead get Darkvision
+    Senses = "darkvision 60 ft.; Perception "+addplus(WisMod);
+
+//How many TW
+//Kill Class Level
+    if(Class != "") 
+    {
+        var ClassLevel = 0;
+
+        var result = Class.split('/');
+        for(var i=0;i<result.length;i++)
+            {
+            ClassLevel += parseInt(result[i].match(/\d+/g));
+            }
+    HitDice = HitDice - ClassLevel;
+    if(HitDice <= 0) HitDice = 1;
+    addNaturalAttack(1, "slam");
+    Class = "";
+    }
+//Bonus HitDice
+    var i = sizeStr.indexOf(Size);
+    if(i == 3||i == 4) HitDice = HitDice+1;
+    else if(i == 5) HitDice = HitDice+2;
+    else if(i == 6) HitDice = HitDice+4;
+    else if(i == 7) HitDice = HitDice+6;
+    else if(i == 8) HitDice = HitDice+10;
+    else HitDice = HitDice+0;
+    
+//Kill SpellsKnown, SpellsPrepared, SpellDomains
+    SpellsKnown = "";
+    SpellsPrepared = "";
+    SpellDomains = "";
+    
+//New Saves
+    Fort = Math.floor(HitDice/3) + ChaMod;
+    Ref = Math.floor(HitDice/3) + DexMod;
+    Will = Math.floor(HitDice/2) + WisMod;
+
+//New BaseAttack
+    BaseAtk = Math.floor(HitDice/4*3);
+
+//Change HitDice to d8
+//Hitpoints (xd8+0)
+    var chabonus = HitDice * ChaMod;
+    if(HitDice <= 3) var BonusHP = 3 + chabonus;
+    else var BonusHP = HitDice + chabonus;
+    HP = Math.floor(HitDice * 4.5 + BonusHP);
+    
+    HD = "("+HitDice+"d8+"+BonusHP+")";
+
+//Kill all SpecialAbilities or Kill-All execpt Ex?
+
+    SpecialAbilities = "";
+    if (variant != "Fast") {
+        SpecialAbilities = "Staggered (Ex): Zombies have poor reflexes and can only perform a single move action or standard action each round. A zombie can move up to its speed and attack in the same round as a charge action."; 
+    }
+//+2 str;-2 dex changing -> AC, CMD
+    stradj = strmod = 1; dexadj = dexmod = -1; sizeadj = 0;
+    fixAttacks( strmod, dexmod, sizeadj );
+    fixCMB( stradj, sizeadj );
+    fixCMD( stradj, dexadj, sizeadj );
+    fixAC(sizeadj,dexmod);
+
+//Fix Attacks (feat bonus...)
+if(Melee != "") {Melee = changeAttackSkeleton (Str,Melee,"true");}
+if(Ranged != "") {Ranged = changeAttackSkeleton (Dex,Ranged,"false");}
+
+//Change Fly Speed
+    var n = Speed.search(/fly/);
+    if(n >= 0) {
+        var amount = Speed.match(/fly\s\d*/m);
+        amount = amount[0].split(" ");
+        changeSpeed( "fly", amount[1], false, "clumsy" );
+    }
+
+//End of function
+}  
+// -->
+</script>
+</head>
+
+<body>
+<table border=0>
+  <tbody>
+        
+
+<form name="form" onsubmit="return false;">
+  <table border=0>
+    <tbody>
+      <tr>
+        <td width="100%" colspan="2">
+          <table width="100%" border="0">
+            <tr>
+              <td>
+                <h3>PRPG Monster Advancer</h3>
+              </td>
+              <td align="right" valign="top"> 
+                <!--<a href="http://brian-jordan.com/monster/"><font size="3">Summon Monster Advancer available here</font></a><br/>-->
+                <a href="http://www.5footstep.de/tools/monsterwandler/"><font size="3">German Version available here</font></a>
+                <hr><font size="3">If you have trouble running the advancer, you can <a href="RpgMonsters.zip">download the files here</a><br/> that allow you to run without web access. (or try using Firefox).</font><hr>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td height="100%" valign="top">
+          <table height="100%" border=0>
+            <tr height="5%">
+                <td valign="top">
+                    <select name="MonsterChooser" style="width: 180">
+                        <option value='-1'>...</option>
+                    </select>
+                </td>
+            </tr>
+            <tr height="90%">
+                <td valign="center" align="center">
+                    <label id="Status"> <i>Loading...</i>&nbsp </label>
+                </td>
+            </tr>
+            <tr height="5%">
+                <td valign="bottom" align="center">
+                    <input name="Go"        type="button" value="Go"     onClick="doIt();">
+                    <input name="Reset"     type="button"  value="Reset" onClick="clearform();">
+                </td>
+            </tr>
+          </table>
+        </td>  
+        <td>
+          <table border=1>
+			<caption>Templates</caption>
+            <tr>
+              <td><input name="Advanced"          type="checkbox" onClick="cleanAdvanced(1);">Advanced</td>
+              <td><input name="Advanced2"      type="checkbox" onClick="cleanAdvanced(2);">Advanced x2</td>
+              <td><input name="Advanced3" type="checkbox" onClick="cleanAdvanced(3);">Advanced x3</td>
+              <td><input name="Advanced4" type="checkbox" onClick="cleanAdvanced(4);">Advanced x4</td>
+              <td><input name="ShowMultiple"      type="checkbox" checked />Show Multiple</td>
+            </tr>
+            <tr>
+              <td><input name="Young"          onClick="cleanYoung(1);" type="checkbox">Young</td>
+              <td><input name="Young2"      onClick="cleanYoung(2);" type="checkbox">Young x2</td>
+              <td><input name="Young3" onClick="cleanYoung(3);" type="checkbox">Young x3</td>
+              <td><input name="Young4" onClick="cleanYoung(4);" type="checkbox">Young x4</td>
+              <td><input name="TwoColumn"      type="checkbox" checked />Two Columns</td>
+            </tr>
+            <tr>
+              <td><input name="Giant"          onClick="cleanGiant(1);" type="checkbox">Giant</td>
+              <td><input name="Giant2"      onClick="cleanGiant(2);" type="checkbox">Giant x2</td>
+              <td><input name="Giant3" onClick="cleanGiant(3);" type="checkbox">Giant x3</td>
+              <td><input name="Giant4" onClick="cleanGiant(4);" type="checkbox">Giant x4</td>
+              <td><input name="IncDesc"      type="checkbox"  />Include Description</td>
+            </tr>
+            <tr>
+              <td><input name="Fiendish"  onClick="cleanFeindish(1);" type="checkbox">Fiendish</td>
+              <td><input name="Celestial" onClick="cleanFeindish(2);" type="checkbox">Celestial</td>
+              <td>
+                <input name="Half_Dragon" type="checkbox">Half Dragon&nbsp;&nbsp;&nbsp;&nbsp;
+              </td>
+              <td>
+                <input name="Half_Fiend" type="checkbox">Half Fiend&nbsp;&nbsp;&nbsp;&nbsp;
+              </td>
+              <td align="right" rowspan="4"><font size="-2">Version 3.4<br>
+              <a href="http://www.opengamingfoundation.org/ogl.html">OGL</a> & <a href="http://paizo.com/paizo/about/communityuse">CUP</a><br/>
+              <!--Summon Monster Advancer by <a href="http://brian-jordan.com/monster">Brian-Jordan.com</a><br/>-->
+              Skeleton & Zombie template by <a href="http://www.5footstep.de">5footstep.de</a><br/>
+              <a href="mailto:brian.gragg@gmail.com">email me</a></font></td>
+            </tr>
+            <tr>
+              <td><input name="Skeleton" type="checkbox" onclick="document.form.SkeletonBloody.checked=false;document.form.SkeletonBurning.checked=false;">Skeleton</td>
+              <td><input name="SkeletonBloody" type="checkbox" onclick="document.form.Skeleton.checked=false;document.form.SkeletonBurning.checked=false;">Bloody Skeleton</td>
+              <td><input name="SkeletonBurning" type="checkbox" onclick="document.form.Skeleton.checked=false;document.form.SkeletonBloody.checked=false;">Burning Skeleton</td>
+            </tr>
+            <tr>
+              <td><input name="Zombie" type="checkbox" onclick="document.form.ZombieFast.checked=false;document.form.ZombiePlague.checked=false;">Zombie</td>
+              <td><input name="ZombieFast" type="checkbox" onclick="document.form.Zombie.checked=false;document.form.ZombiePlague.checked=false;">Fast Zombie</td>
+              <td><input name="ZombiePlague" type="checkbox" onclick="document.form.Zombie.checked=false;document.form.ZombieFast.checked=false;">Plague Zombie</td>
+            </tr>
+            <tr>
+              <td colspan="2"><input name="AugmentSummoning" type="checkbox">Augment Summoning</td>
+              <td><input name="Mighty" type="checkbox">Mighty</td>
+              <td><input name="Dire" type="checkbox">Dire</td>
+            </tr>
+          </table>
+		  <table border=1>
+			<caption>Additional Adjustments</caption>
+            <tr>
+              <td title="Every 4 HD changes physical stats (Str, Dex, Con, CMB, CMD, BAB, atk, dmg, AC, hp, saves), Size, Space, Reach">Adjust Hit Dice: <input type="button" value="-" onclick="adjustRHD(-1);"/>
+                <input name="RacialHitDice" type="text" size="1" value="0" maxlength="2" readonly style="text-align:center;"/>
+                <input type="button" value="+" onclick="adjustRHD(1);"/>
+              </td>
+              <td title="Changes Size, Space, and Reach only">Adjust Size: <input type="button" value="-" onclick="adjustSIZE(-1);"/>
+                <input name="AdjustSize" type="text" size="1" value="0" maxlength="2" readonly style="text-align:center;"/>
+                <input type="button" value="+" onclick="adjustSIZE(1);"/>
+              </td>
+              <td title="Changes Speed">Add Land Speed: <input type="button" value="-" onclick="adjustSPD(-5);"/>
+                <input name="AdjustSpeed" type="text" size="1" value="0" maxlength="2" readonly style="text-align:center;"/>
+                <input type="button" value="+" onclick="adjustSPD(5);"/>
+              </td>
+            </tr>
+		  </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <table width="100%">
+    <tbody>
+      <tr>
+        <td>
+          <table>
+            <div id="writeroot">
+                <div id="monsterDiv">&nbsp;</div>
+            </div>
+          </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</form>
+
+
+</body>
+<script language="JavaScript" type="text/javascript">
+clearform();
+importXML();
+</script>
+</html>
