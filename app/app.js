@@ -11,4 +11,11 @@ config(['$locationProvider', '$routeProvider', function($locationProvider, $rout
   $locationProvider.hashPrefix('!');
 
   $routeProvider.otherwise({redirectTo: '/view1'});
-}]);
+}])
+
+.controller('TemplateController', ['$scope', function($scope) {
+  $scope.advTemplateVal = 0;
+  $scope.yngTemplateVal = 0;
+  $scope.giantTemplateVal = 0;
+}])
+;
