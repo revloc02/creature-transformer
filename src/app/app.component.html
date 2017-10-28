@@ -3,6 +3,9 @@
   <h1>
     Creature Transformer
   </h1>
+  <!-- <input [(ngModel)]="query">
+  <div *ngFor="let item of items | search:'id,text':query">{{item.text}}</div> -->
+  <app-filter-creature></app-filter-creature>
 </div>
 <h2>Creature Output Details:</h2>
   <div id="monsterDiv">
@@ -11,7 +14,7 @@
         <tr valign="top">
           <td width="49%">
             <hr>
-            <font style="color: white; background-color: black"><b>Abasheen Genie ( Advanced ) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CR 8</b></font><br><b>XP 4800</b><br>N Large outsider (air, extraplanar)<br><b>Init</b> +9; <b>Senses</b> darkvision 60 ft.; Perception +19<br>
+            <font style="color: white; background-color: black"><b>Abasheen Genie Search={{values}} &nbsp; CR 8</b></font><br><b>XP 4800</b><br>N Large outsider (air, extraplanar)<br><b>Init</b> +9; <b>Senses</b> darkvision 60 ft.; Perception +19<br>
             <font size="-2">
               <hr align="left" width="70%">
               <b>DEFENSE</b>
